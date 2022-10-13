@@ -1,6 +1,6 @@
 module Cube where
 
-import Data.Set
+import Data.Set (Set, fromList)
 
 data Color = W | Y | G | B | R | O deriving (Show, Eq, Enum, Ord)
 data Cubie = Edge !Color !Color |
