@@ -6,7 +6,8 @@ data Color = W | Y | G | B | R | O deriving (Show, Eq, Enum, Ord)
 data Cubie = Edge !Color !Color |
              Corner !Color !Color !Color deriving (Show, Eq, Ord)
 data CubieEmbed = CubieEmbed { cubie :: !Cubie,
-                               location :: !(Int, Int, Int) } deriving (Show)
+                               location :: ![Int] } deriving (Show)
+--                             location <- [0, 1, 2]^3
 type Layer = [CubieEmbed]
 type Cube = [Layer]
 
