@@ -18,7 +18,7 @@ firstCorners :: [LayerSeed]
 firstCorners = [ (embedFirst (c, r), edges, delete c corners, 0)
                | c <- toList corners, r <- [id, rotate, rotate . rotate] ]
   where
-    embedFirst (c, r) = [CubieEmbed { cubie = r c,  location = [0, 0, 0] }]
+    embedFirst (c, r) = [CubieEmbed { cubie = r c,  location = (0, 0, 0) }]
 
 buildNode :: LayerSeed -> (Layer, [LayerSeed])
 buildNode (layer, edgs, corns, n) = (layer, filter (valid layer) embedded)
@@ -46,14 +46,16 @@ combinations edgsOrCors n s = foldl' adjoiner Empty s
     rotations = id <| rotate <|
                 (if edgsOrCors == 0 then rotate . rotate <| Empty else Empty)
 
-cubieLocation :: Int -> Int -> [Int]
-cubieLocation 3 i = permutations [0, 1, 2] !! i
-cubieLocation n i = (!! i) $ map transform [[1,0,0], [0,1,0], [0,0,1]]
+cubieLocation :: Int -> Int -> (Int, Int, Int)
+cubieLocation 3 i = toTuple (permutations [0, 1, 2] !! i)
   where
-    transform [a, b, c] = if n < 3 then [n*a, n*b, n*c]
-                          else [2-(6-n)*a, 2-(6-n)*b, 2-(6-n)*c]
+    toTuple [a, b, c] = (a, b, c)
+cubieLocation n i = (!! i) $ map transform [(1,0,0), (0,1,0), (0,0,1)]
+  where
+    transform (a, b, c) = if n < 3 then (n*a, n*b, n*c)
+                          else (2-(6-n)*a, 2-(6-n)*b, 2-(6-n)*c)
 
 valid :: Layer -> LayerSeed -> Bool
 valid ol (nl, _, _, _) = and [ checkColors c | c <- nl ]
   where
-    checkColors CubieEmbed {cubie = c, location = [x,y,z]} = undefined
+    checkColors CubieEmbed {cubie = c, location = (x,y,z)} = undefined
