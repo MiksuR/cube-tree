@@ -1,3 +1,15 @@
+{-|
+Module      : Cube
+Description : Primitive definitions and auxiliary functions
+Copyright   : (c) Miksu Rankaviita, 2023
+License     : BSD-3-Clause license
+Stability   : stable
+
+The 3×3 Rubik's cube is defined as an array of cubies,
+which have defined sticker colours.
+This module contains a function for generating a net of a
+given cube, which can be printed in the terminal.
+-}
 module Cube where
 
 import Prelude hiding (Right, Left)
@@ -7,13 +19,34 @@ import Data.Set (Set, fromList)
 
 import Text.Format
 
-data Color = W | Y | G | B | R | O deriving (Show, Eq, Enum, Ord)
+-- |Possible colours of stickers indicated by a letter.
+data Color = W -- ^ White
+           | Y -- ^ Yellow
+           | G -- ^ Green
+           | B -- ^ Blue
+           | R -- ^ Red
+           | O -- ^ Orange
+           deriving (Show, Eq, Enum, Ord)
 data Face = Up | Down | Front | Back | Right | Left deriving (Show)
 data Cubie = Center !Color | Edge !Color !Color |
              Corner !Color !Color !Color | Inside deriving (Show, Eq, Ord)
+-- |This type allows to define a cubie outside the context of an existing cube.
 data CubieEmbed = CubieEmbed { cubie :: !Cubie,
-                               location :: !(Int, Int, Int) } deriving (Show)
+                               -- |The index, where the cubie is to be 'embedded' in a `Cube` object
+                               location :: !(Int, Int, Int)
+                             } deriving (Show)
+-- |`Layer`s are used in the `ConstructForest` module to build `Cube`s layer-by-layer
 type Layer = [CubieEmbed]
+{-|
+  Assuming the standard color scheme and orientation, where the white face is on top
+  and green is in the front, the origin is at the front-up-left corner.
+  The axes are oriented as in the picture below.
+
+  TODO: Add picture
+
+  The orientation of the cubie is determined by the order of the colours in the type.
+  See `corners` and `edges` for the standard orientations.
+-}
 type Cube = Array (Int, Int, Int) Cubie
 
 rotate :: Cubie -> Cubie
@@ -21,9 +54,22 @@ rotate (Edge a b) = Edge b a
 rotate (Corner a b c) = Corner c a b
 rotate x = x
 
+{-|
+  The set of all possible corners in the standard orientation:
+
+  {Corner W G O, Corner W O B, Corner W B R, Corner W R G,
+   Corner Y O G, Corner Y B O, Corner Y R B, Corner Y G R}
+-}
 corners :: Set Cubie
 corners = fromList [Corner W G O, Corner W O B, Corner W B R, Corner W R G,
                     Corner Y O G, Corner Y B O, Corner Y R B, Corner Y G R]
+{-|
+  The set of all possible edges in the standard orientation:
+
+  {Edge W G, Edge W O, Edge W B, Edge W R,
+   Edge G O, Edge B O, Edge B R, Edge G R,
+   Edge Y G, Edge Y O, Edge Y B, Edge Y R}
+-}
 edges :: Set Cubie
 edges = fromList [Edge W G, Edge W O, Edge W B, Edge W R,
                   Edge G O, Edge B O, Edge B R, Edge G R,
