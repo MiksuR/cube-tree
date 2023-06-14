@@ -1,0 +1,968 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span id="local-6989586621679033183"><span id="local-6989586621679033184"><span id="local-6989586621679033185"><span id="local-6989586621679033186"><span id="local-6989586621679033187"></span></span></span></span></span><span class="hs-comment">{-|
+Module      : Cube
+Description : Primitive definitions and auxiliary functions
+Copyright   : (c) Miksu Rankaviita, 2023
+License     : BSD-3-Clause license
+Stability   : stable
+
+The 3&#215;3 Rubik's cube is defined as an array of cubies,
+which have defined sticker colours.
+This module contains a function for generating a net of a
+given cube, which can be printed in the terminal.
+-}</span><span>
+</span><span id="line-13"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Cube</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-14"></span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Prelude</span></span><span> </span><span class="hs-keyword">hiding</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Right</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">Left</span></span><span class="hs-special">)</span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Array.IArray</span></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">fromJust</span></span><span class="hs-special">)</span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Set</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Set</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">fromList</span></span><span class="hs-special">)</span><span>
+</span><span id="line-19"></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Text.Format</span></span><span>
+</span><span id="line-21"></span><span>
+</span><span id="line-22"></span><span class="hs-comment">-- |Possible colours of stickers indicated by a letter.</span><span>
+</span><span id="line-23"></span><span class="hs-keyword">data</span><span> </span><span id="Color"><span class="annot"><a href="Cube.html#Color"><span class="hs-identifier hs-var">Color</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="W"><span class="annot"><a href="Cube.html#W"><span class="hs-identifier hs-var">W</span></a></span></span><span> </span><span class="hs-comment">-- ^ White</span><span>
+</span><span id="line-24"></span><span>           </span><span class="hs-glyph">|</span><span> </span><span id="Y"><span class="annot"><a href="Cube.html#Y"><span class="hs-identifier hs-var">Y</span></a></span></span><span> </span><span class="hs-comment">-- ^ Yellow</span><span>
+</span><span id="line-25"></span><span>           </span><span class="hs-glyph">|</span><span> </span><span id="G"><span class="annot"><a href="Cube.html#G"><span class="hs-identifier hs-var">G</span></a></span></span><span> </span><span class="hs-comment">-- ^ Green</span><span>
+</span><span id="line-26"></span><span>           </span><span class="hs-glyph">|</span><span> </span><span id="B"><span class="annot"><a href="Cube.html#B"><span class="hs-identifier hs-var">B</span></a></span></span><span> </span><span class="hs-comment">-- ^ Blue</span><span>
+</span><span id="line-27"></span><span>           </span><span class="hs-glyph">|</span><span> </span><span id="R"><span class="annot"><a href="Cube.html#R"><span class="hs-identifier hs-var">R</span></a></span></span><span> </span><span class="hs-comment">-- ^ Red</span><span>
+</span><span id="line-28"></span><span>           </span><span class="hs-glyph">|</span><span> </span><span id="O"><span class="annot"><a href="Cube.html#O"><span class="hs-identifier hs-var">O</span></a></span></span><span> </span><span class="hs-comment">-- ^ Orange</span><span>
+</span><span id="line-29"></span><span>           </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679033068"><span id="local-6989586621679033070"><span id="local-6989586621679033072"><span class="annot"><span class="annottext">Int -&gt; Color -&gt; ShowS
+[Color] -&gt; ShowS
+Color -&gt; String
+(Int -&gt; Color -&gt; ShowS)
+-&gt; (Color -&gt; String) -&gt; ([Color] -&gt; ShowS) -&gt; Show Color
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [Color] -&gt; ShowS
+$cshowList :: [Color] -&gt; ShowS
+show :: Color -&gt; String
+$cshow :: Color -&gt; String
+showsPrec :: Int -&gt; Color -&gt; ShowS
+$cshowsPrec :: Int -&gt; Color -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679033063"><span id="local-6989586621679033065"><span class="annot"><span class="annottext">Color -&gt; Color -&gt; Bool
+(Color -&gt; Color -&gt; Bool) -&gt; (Color -&gt; Color -&gt; Bool) -&gt; Eq Color
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: Color -&gt; Color -&gt; Bool
+$c/= :: Color -&gt; Color -&gt; Bool
+== :: Color -&gt; Color -&gt; Bool
+$c== :: Color -&gt; Color -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679033027"><span id="local-6989586621679033029"><span id="local-6989586621679033033"><span id="local-6989586621679033036"><span id="local-6989586621679033038"><span id="local-6989586621679033048"><span id="local-6989586621679033054"><span id="local-6989586621679033060"><span class="annot"><span class="annottext">Int -&gt; Color
+Color -&gt; Int
+Color -&gt; [Color]
+Color -&gt; Color
+Color -&gt; Color -&gt; [Color]
+Color -&gt; Color -&gt; Color -&gt; [Color]
+(Color -&gt; Color)
+-&gt; (Color -&gt; Color)
+-&gt; (Int -&gt; Color)
+-&gt; (Color -&gt; Int)
+-&gt; (Color -&gt; [Color])
+-&gt; (Color -&gt; Color -&gt; [Color])
+-&gt; (Color -&gt; Color -&gt; [Color])
+-&gt; (Color -&gt; Color -&gt; Color -&gt; [Color])
+-&gt; Enum Color
+forall a.
+(a -&gt; a)
+-&gt; (a -&gt; a)
+-&gt; (Int -&gt; a)
+-&gt; (a -&gt; Int)
+-&gt; (a -&gt; [a])
+-&gt; (a -&gt; a -&gt; [a])
+-&gt; (a -&gt; a -&gt; [a])
+-&gt; (a -&gt; a -&gt; a -&gt; [a])
+-&gt; Enum a
+enumFromThenTo :: Color -&gt; Color -&gt; Color -&gt; [Color]
+$cenumFromThenTo :: Color -&gt; Color -&gt; Color -&gt; [Color]
+enumFromTo :: Color -&gt; Color -&gt; [Color]
+$cenumFromTo :: Color -&gt; Color -&gt; [Color]
+enumFromThen :: Color -&gt; Color -&gt; [Color]
+$cenumFromThen :: Color -&gt; Color -&gt; [Color]
+enumFrom :: Color -&gt; [Color]
+$cenumFrom :: Color -&gt; [Color]
+fromEnum :: Color -&gt; Int
+$cfromEnum :: Color -&gt; Int
+toEnum :: Int -&gt; Color
+$ctoEnum :: Int -&gt; Color
+pred :: Color -&gt; Color
+$cpred :: Color -&gt; Color
+succ :: Color -&gt; Color
+$csucc :: Color -&gt; Color
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Enum</span></span></span></span></span></span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679033007"><span id="local-6989586621679033009"><span id="local-6989586621679033012"><span id="local-6989586621679033015"><span id="local-6989586621679033018"><span id="local-6989586621679033020"><span id="local-6989586621679033022"><span class="annot"><span class="annottext">Eq Color
+Eq Color
+-&gt; (Color -&gt; Color -&gt; Ordering)
+-&gt; (Color -&gt; Color -&gt; Bool)
+-&gt; (Color -&gt; Color -&gt; Bool)
+-&gt; (Color -&gt; Color -&gt; Bool)
+-&gt; (Color -&gt; Color -&gt; Bool)
+-&gt; (Color -&gt; Color -&gt; Color)
+-&gt; (Color -&gt; Color -&gt; Color)
+-&gt; Ord Color
+Color -&gt; Color -&gt; Bool
+Color -&gt; Color -&gt; Ordering
+Color -&gt; Color -&gt; Color
+forall a.
+Eq a
+-&gt; (a -&gt; a -&gt; Ordering)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; Ord a
+min :: Color -&gt; Color -&gt; Color
+$cmin :: Color -&gt; Color -&gt; Color
+max :: Color -&gt; Color -&gt; Color
+$cmax :: Color -&gt; Color -&gt; Color
+&gt;= :: Color -&gt; Color -&gt; Bool
+$c&gt;= :: Color -&gt; Color -&gt; Bool
+&gt; :: Color -&gt; Color -&gt; Bool
+$c&gt; :: Color -&gt; Color -&gt; Bool
+&lt;= :: Color -&gt; Color -&gt; Bool
+$c&lt;= :: Color -&gt; Color -&gt; Bool
+&lt; :: Color -&gt; Color -&gt; Bool
+$c&lt; :: Color -&gt; Color -&gt; Bool
+compare :: Color -&gt; Color -&gt; Ordering
+$ccompare :: Color -&gt; Color -&gt; Ordering
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Ord</span></span></span></span></span></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-30"></span><span class="hs-keyword">data</span><span> </span><span id="Face"><span class="annot"><a href="Cube.html#Face"><span class="hs-identifier hs-var">Face</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="Up"><span class="annot"><a href="Cube.html#Up"><span class="hs-identifier hs-var">Up</span></a></span></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="Down"><span class="annot"><a href="Cube.html#Down"><span class="hs-identifier hs-var">Down</span></a></span></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="Front"><span class="annot"><a href="Cube.html#Front"><span class="hs-identifier hs-var">Front</span></a></span></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="Back"><span class="annot"><a href="Cube.html#Back"><span class="hs-identifier hs-var">Back</span></a></span></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="Right"><span class="annot"><a href="Cube.html#Right"><span class="hs-identifier hs-var">Right</span></a></span></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="Left"><span class="annot"><a href="Cube.html#Left"><span class="hs-identifier hs-var">Left</span></a></span></span><span> </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679032994"><span id="local-6989586621679032996"><span id="local-6989586621679032998"><span class="annot"><span class="annottext">Int -&gt; Face -&gt; ShowS
+[Face] -&gt; ShowS
+Face -&gt; String
+(Int -&gt; Face -&gt; ShowS)
+-&gt; (Face -&gt; String) -&gt; ([Face] -&gt; ShowS) -&gt; Show Face
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [Face] -&gt; ShowS
+$cshowList :: [Face] -&gt; ShowS
+show :: Face -&gt; String
+$cshow :: Face -&gt; String
+showsPrec :: Int -&gt; Face -&gt; ShowS
+$cshowsPrec :: Int -&gt; Face -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-31"></span><span class="hs-keyword">data</span><span> </span><span id="Cubie"><span class="annot"><a href="Cube.html#Cubie"><span class="hs-identifier hs-var">Cubie</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="Center"><span class="annot"><a href="Cube.html#Center"><span class="hs-identifier hs-var">Center</span></a></span></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Cube.html#Color"><span class="hs-identifier hs-type">Color</span></a></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="Edge"><span class="annot"><a href="Cube.html#Edge"><span class="hs-identifier hs-var">Edge</span></a></span></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Cube.html#Color"><span class="hs-identifier hs-type">Color</span></a></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Cube.html#Color"><span class="hs-identifier hs-type">Color</span></a></span><span> </span><span class="hs-glyph">|</span><span>
+</span><span id="line-32"></span><span>             </span><span id="Corner"><span class="annot"><a href="Cube.html#Corner"><span class="hs-identifier hs-var">Corner</span></a></span></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Cube.html#Color"><span class="hs-identifier hs-type">Color</span></a></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Cube.html#Color"><span class="hs-identifier hs-type">Color</span></a></span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Cube.html#Color"><span class="hs-identifier hs-type">Color</span></a></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="Inside"><span class="annot"><a href="Cube.html#Inside"><span class="hs-identifier hs-var">Inside</span></a></span></span><span> </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679032975"><span id="local-6989586621679032977"><span id="local-6989586621679032988"><span class="annot"><span class="annottext">Int -&gt; Cubie -&gt; ShowS
+[Cubie] -&gt; ShowS
+Cubie -&gt; String
+(Int -&gt; Cubie -&gt; ShowS)
+-&gt; (Cubie -&gt; String) -&gt; ([Cubie] -&gt; ShowS) -&gt; Show Cubie
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [Cubie] -&gt; ShowS
+$cshowList :: [Cubie] -&gt; ShowS
+show :: Cubie -&gt; String
+$cshow :: Cubie -&gt; String
+showsPrec :: Int -&gt; Cubie -&gt; ShowS
+$cshowsPrec :: Int -&gt; Cubie -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679032965"><span id="local-6989586621679032973"><span class="annot"><span class="annottext">Cubie -&gt; Cubie -&gt; Bool
+(Cubie -&gt; Cubie -&gt; Bool) -&gt; (Cubie -&gt; Cubie -&gt; Bool) -&gt; Eq Cubie
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+/= :: Cubie -&gt; Cubie -&gt; Bool
+$c/= :: Cubie -&gt; Cubie -&gt; Bool
+== :: Cubie -&gt; Cubie -&gt; Bool
+$c== :: Cubie -&gt; Cubie -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679032943"><span id="local-6989586621679032945"><span id="local-6989586621679032947"><span id="local-6989586621679032949"><span id="local-6989586621679032951"><span id="local-6989586621679032953"><span id="local-6989586621679032961"><span class="annot"><span class="annottext">Eq Cubie
+Eq Cubie
+-&gt; (Cubie -&gt; Cubie -&gt; Ordering)
+-&gt; (Cubie -&gt; Cubie -&gt; Bool)
+-&gt; (Cubie -&gt; Cubie -&gt; Bool)
+-&gt; (Cubie -&gt; Cubie -&gt; Bool)
+-&gt; (Cubie -&gt; Cubie -&gt; Bool)
+-&gt; (Cubie -&gt; Cubie -&gt; Cubie)
+-&gt; (Cubie -&gt; Cubie -&gt; Cubie)
+-&gt; Ord Cubie
+Cubie -&gt; Cubie -&gt; Bool
+Cubie -&gt; Cubie -&gt; Ordering
+Cubie -&gt; Cubie -&gt; Cubie
+forall a.
+Eq a
+-&gt; (a -&gt; a -&gt; Ordering)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; Ord a
+min :: Cubie -&gt; Cubie -&gt; Cubie
+$cmin :: Cubie -&gt; Cubie -&gt; Cubie
+max :: Cubie -&gt; Cubie -&gt; Cubie
+$cmax :: Cubie -&gt; Cubie -&gt; Cubie
+&gt;= :: Cubie -&gt; Cubie -&gt; Bool
+$c&gt;= :: Cubie -&gt; Cubie -&gt; Bool
+&gt; :: Cubie -&gt; Cubie -&gt; Bool
+$c&gt; :: Cubie -&gt; Cubie -&gt; Bool
+&lt;= :: Cubie -&gt; Cubie -&gt; Bool
+$c&lt;= :: Cubie -&gt; Cubie -&gt; Bool
+&lt; :: Cubie -&gt; Cubie -&gt; Bool
+$c&lt; :: Cubie -&gt; Cubie -&gt; Bool
+compare :: Cubie -&gt; Cubie -&gt; Ordering
+$ccompare :: Cubie -&gt; Cubie -&gt; Ordering
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Ord</span></span></span></span></span></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-33"></span><span class="hs-comment">-- |This type allows to define a cubie outside the context of an existing cube.</span><span>
+</span><span id="line-34"></span><span class="hs-keyword">data</span><span> </span><span id="CubieEmbed"><span class="annot"><a href="Cube.html#CubieEmbed"><span class="hs-identifier hs-var">CubieEmbed</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="CubieEmbed"><span class="annot"><a href="Cube.html#CubieEmbed"><span class="hs-identifier hs-var">CubieEmbed</span></a></span></span><span> </span><span class="hs-special">{</span><span> </span><span id="cubie"><span class="annot"><span class="annottext">CubieEmbed -&gt; Cubie
+</span><a href="Cube.html#cubie"><span class="hs-identifier hs-var hs-var">cubie</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Cube.html#Cubie"><span class="hs-identifier hs-type">Cubie</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-35"></span><span>                               </span><span class="hs-comment">-- |The index, where the cubie is to be 'embedded' in a `Cube` object</span><span>
+</span><span id="line-36"></span><span>                               </span><span id="location"><span class="annot"><span class="annottext">CubieEmbed -&gt; (Int, Int, Int)
+</span><a href="Cube.html#location"><span class="hs-identifier hs-var hs-var">location</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-glyph">!</span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">)</span><span>
+</span><span id="line-37"></span><span>                             </span><span class="hs-special">}</span><span> </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679032927"><span id="local-6989586621679032929"><span id="local-6989586621679032938"><span class="annot"><span class="annottext">Int -&gt; CubieEmbed -&gt; ShowS
+[CubieEmbed] -&gt; ShowS
+CubieEmbed -&gt; String
+(Int -&gt; CubieEmbed -&gt; ShowS)
+-&gt; (CubieEmbed -&gt; String)
+-&gt; ([CubieEmbed] -&gt; ShowS)
+-&gt; Show CubieEmbed
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [CubieEmbed] -&gt; ShowS
+$cshowList :: [CubieEmbed] -&gt; ShowS
+show :: CubieEmbed -&gt; String
+$cshow :: CubieEmbed -&gt; String
+showsPrec :: Int -&gt; CubieEmbed -&gt; ShowS
+$cshowsPrec :: Int -&gt; CubieEmbed -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-38"></span><span class="hs-comment">-- |`Layer`s are used in the `ConstructForest` module to build `Cube`s layer-by-layer</span><span>
+</span><span id="line-39"></span><span class="hs-keyword">type</span><span> </span><span id="Layer"><span class="annot"><a href="Cube.html#Layer"><span class="hs-identifier hs-var">Layer</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Cube.html#CubieEmbed"><span class="hs-identifier hs-type">CubieEmbed</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-40"></span><span class="hs-comment">{-|
+  Assuming the standard color scheme and orientation, where the white face is on top
+  and green is in the front, the origin is at the front-up-left corner.
+  The axes are oriented as in the picture below.
+
+  TODO: Add picture
+
+  The orientation of the cubie is determined by the order of the colours in the type.
+  See `corners` and `edges` for the standard orientations.
+-}</span><span>
+</span><span id="line-50"></span><span class="hs-keyword">type</span><span> </span><span id="Cube"><span class="annot"><a href="Cube.html#Cube"><span class="hs-identifier hs-var">Cube</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Array</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="Cube.html#Cubie"><span class="hs-identifier hs-type">Cubie</span></a></span><span>
+</span><span id="line-51"></span><span>
+</span><span id="line-52"></span><span class="annot"><a href="Cube.html#rotate"><span class="hs-identifier hs-type">rotate</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Cube.html#Cubie"><span class="hs-identifier hs-type">Cubie</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Cube.html#Cubie"><span class="hs-identifier hs-type">Cubie</span></a></span><span>
+</span><span id="line-53"></span><span id="rotate"><span class="annot"><span class="annottext">rotate :: Cubie -&gt; Cubie
+</span><a href="Cube.html#rotate"><span class="hs-identifier hs-var hs-var">rotate</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Cube.html#Edge"><span class="hs-identifier hs-type">Edge</span></a></span><span> </span><span id="local-6989586621679032924"><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032924"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span id="local-6989586621679032923"><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032923"><span class="hs-identifier hs-var">b</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Color -&gt; Cubie
+</span><a href="Cube.html#Edge"><span class="hs-identifier hs-var">Edge</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032923"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032924"><span class="hs-identifier hs-var">a</span></a></span><span>
+</span><span id="line-54"></span><span class="annot"><a href="Cube.html#rotate"><span class="hs-identifier hs-var">rotate</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Cube.html#Corner"><span class="hs-identifier hs-type">Corner</span></a></span><span> </span><span id="local-6989586621679032922"><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032922"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span id="local-6989586621679032921"><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032921"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span id="local-6989586621679032920"><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032920"><span class="hs-identifier hs-var">c</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Color -&gt; Color -&gt; Cubie
+</span><a href="Cube.html#Corner"><span class="hs-identifier hs-var">Corner</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032920"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032922"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032921"><span class="hs-identifier hs-var">b</span></a></span><span>
+</span><span id="line-55"></span><span class="annot"><a href="Cube.html#rotate"><span class="hs-identifier hs-var">rotate</span></a></span><span> </span><span id="local-6989586621679032919"><span class="annot"><span class="annottext">Cubie
+</span><a href="#local-6989586621679032919"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Cubie
+</span><a href="#local-6989586621679032919"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-56"></span><span>
+</span><span id="line-57"></span><span class="hs-comment">{-|
+  The set of all possible corners in the standard orientation:
+
+  {Corner W G O, Corner W O B, Corner W B R, Corner W R G,
+   Corner Y O G, Corner Y B O, Corner Y R B, Corner Y G R}
+-}</span><span>
+</span><span id="line-63"></span><span class="annot"><a href="Cube.html#corners"><span class="hs-identifier hs-type">corners</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Set</span></span><span> </span><span class="annot"><a href="Cube.html#Cubie"><span class="hs-identifier hs-type">Cubie</span></a></span><span>
+</span><span id="line-64"></span><span id="corners"><span class="annot"><span class="annottext">corners :: Set Cubie
+</span><a href="Cube.html#corners"><span class="hs-identifier hs-var hs-var">corners</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Cubie] -&gt; Set Cubie
+forall a. Ord a =&gt; [a] -&gt; Set a
+</span><span class="hs-identifier hs-var">fromList</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Color -&gt; Color -&gt; Color -&gt; Cubie
+</span><a href="Cube.html#Corner"><span class="hs-identifier hs-var">Corner</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#W"><span class="hs-identifier hs-var">W</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#G"><span class="hs-identifier hs-var">G</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#O"><span class="hs-identifier hs-var">O</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Color -&gt; Color -&gt; Cubie
+</span><a href="Cube.html#Corner"><span class="hs-identifier hs-var">Corner</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#W"><span class="hs-identifier hs-var">W</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#O"><span class="hs-identifier hs-var">O</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#B"><span class="hs-identifier hs-var">B</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Color -&gt; Color -&gt; Cubie
+</span><a href="Cube.html#Corner"><span class="hs-identifier hs-var">Corner</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#W"><span class="hs-identifier hs-var">W</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#B"><span class="hs-identifier hs-var">B</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#R"><span class="hs-identifier hs-var">R</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Color -&gt; Color -&gt; Cubie
+</span><a href="Cube.html#Corner"><span class="hs-identifier hs-var">Corner</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#W"><span class="hs-identifier hs-var">W</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#R"><span class="hs-identifier hs-var">R</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#G"><span class="hs-identifier hs-var">G</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-65"></span><span>                    </span><span class="annot"><span class="annottext">Color -&gt; Color -&gt; Color -&gt; Cubie
+</span><a href="Cube.html#Corner"><span class="hs-identifier hs-var">Corner</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#Y"><span class="hs-identifier hs-var">Y</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#O"><span class="hs-identifier hs-var">O</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#G"><span class="hs-identifier hs-var">G</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Color -&gt; Color -&gt; Cubie
+</span><a href="Cube.html#Corner"><span class="hs-identifier hs-var">Corner</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#Y"><span class="hs-identifier hs-var">Y</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#B"><span class="hs-identifier hs-var">B</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#O"><span class="hs-identifier hs-var">O</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Color -&gt; Color -&gt; Cubie
+</span><a href="Cube.html#Corner"><span class="hs-identifier hs-var">Corner</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#Y"><span class="hs-identifier hs-var">Y</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#R"><span class="hs-identifier hs-var">R</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#B"><span class="hs-identifier hs-var">B</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Color -&gt; Color -&gt; Cubie
+</span><a href="Cube.html#Corner"><span class="hs-identifier hs-var">Corner</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#Y"><span class="hs-identifier hs-var">Y</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#G"><span class="hs-identifier hs-var">G</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#R"><span class="hs-identifier hs-var">R</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-66"></span><span class="hs-comment">{-|
+  The set of all possible edges in the standard orientation:
+
+  {Edge W G, Edge W O, Edge W B, Edge W R,
+   Edge G O, Edge B O, Edge B R, Edge G R,
+   Edge Y G, Edge Y O, Edge Y B, Edge Y R}
+-}</span><span>
+</span><span id="line-73"></span><span class="annot"><a href="Cube.html#edges"><span class="hs-identifier hs-type">edges</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Set</span></span><span> </span><span class="annot"><a href="Cube.html#Cubie"><span class="hs-identifier hs-type">Cubie</span></a></span><span>
+</span><span id="line-74"></span><span id="edges"><span class="annot"><span class="annottext">edges :: Set Cubie
+</span><a href="Cube.html#edges"><span class="hs-identifier hs-var hs-var">edges</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Cubie] -&gt; Set Cubie
+forall a. Ord a =&gt; [a] -&gt; Set a
+</span><span class="hs-identifier hs-var">fromList</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Color -&gt; Color -&gt; Cubie
+</span><a href="Cube.html#Edge"><span class="hs-identifier hs-var">Edge</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#W"><span class="hs-identifier hs-var">W</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#G"><span class="hs-identifier hs-var">G</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Color -&gt; Cubie
+</span><a href="Cube.html#Edge"><span class="hs-identifier hs-var">Edge</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#W"><span class="hs-identifier hs-var">W</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#O"><span class="hs-identifier hs-var">O</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Color -&gt; Cubie
+</span><a href="Cube.html#Edge"><span class="hs-identifier hs-var">Edge</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#W"><span class="hs-identifier hs-var">W</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#B"><span class="hs-identifier hs-var">B</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Color -&gt; Cubie
+</span><a href="Cube.html#Edge"><span class="hs-identifier hs-var">Edge</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#W"><span class="hs-identifier hs-var">W</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#R"><span class="hs-identifier hs-var">R</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-75"></span><span>                  </span><span class="annot"><span class="annottext">Color -&gt; Color -&gt; Cubie
+</span><a href="Cube.html#Edge"><span class="hs-identifier hs-var">Edge</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#G"><span class="hs-identifier hs-var">G</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#O"><span class="hs-identifier hs-var">O</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Color -&gt; Cubie
+</span><a href="Cube.html#Edge"><span class="hs-identifier hs-var">Edge</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#B"><span class="hs-identifier hs-var">B</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#O"><span class="hs-identifier hs-var">O</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Color -&gt; Cubie
+</span><a href="Cube.html#Edge"><span class="hs-identifier hs-var">Edge</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#B"><span class="hs-identifier hs-var">B</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#R"><span class="hs-identifier hs-var">R</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Color -&gt; Cubie
+</span><a href="Cube.html#Edge"><span class="hs-identifier hs-var">Edge</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#G"><span class="hs-identifier hs-var">G</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#R"><span class="hs-identifier hs-var">R</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-76"></span><span>                  </span><span class="annot"><span class="annottext">Color -&gt; Color -&gt; Cubie
+</span><a href="Cube.html#Edge"><span class="hs-identifier hs-var">Edge</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#Y"><span class="hs-identifier hs-var">Y</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#G"><span class="hs-identifier hs-var">G</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Color -&gt; Cubie
+</span><a href="Cube.html#Edge"><span class="hs-identifier hs-var">Edge</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#Y"><span class="hs-identifier hs-var">Y</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#O"><span class="hs-identifier hs-var">O</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Color -&gt; Cubie
+</span><a href="Cube.html#Edge"><span class="hs-identifier hs-var">Edge</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#Y"><span class="hs-identifier hs-var">Y</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#B"><span class="hs-identifier hs-var">B</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Color -&gt; Cubie
+</span><a href="Cube.html#Edge"><span class="hs-identifier hs-var">Edge</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#Y"><span class="hs-identifier hs-var">Y</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#R"><span class="hs-identifier hs-var">R</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-77"></span><span>
+</span><span id="line-78"></span><span class="annot"><a href="Cube.html#getFace"><span class="hs-identifier hs-type">getFace</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Cube.html#Cube"><span class="hs-identifier hs-type">Cube</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Cube.html#Face"><span class="hs-identifier hs-type">Face</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Array</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="Cube.html#Color"><span class="hs-identifier hs-type">Color</span></a></span><span>
+</span><span id="line-79"></span><span id="getFace"><span class="annot"><span class="annottext">getFace :: Cube -&gt; Face -&gt; Array (Int, Int) Color
+</span><a href="Cube.html#getFace"><span class="hs-identifier hs-var hs-var">getFace</span></a></span></span><span> </span><span id="local-6989586621679032915"><span class="annot"><span class="annottext">Cube
+</span><a href="#local-6989586621679032915"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span id="local-6989586621679032914"><span class="annot"><span class="annottext">Face
+</span><a href="#local-6989586621679032914"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">((Int, Int), (Int, Int))
+-&gt; [((Int, Int), Color)] -&gt; Array (Int, Int) Color
+forall (a :: * -&gt; * -&gt; *) e i.
+(IArray a e, Ix i) =&gt;
+(i, i) -&gt; [(i, e)] -&gt; a i e
+</span><span class="hs-identifier hs-var">array</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-80"></span><span>                    </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032912"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032911"><span class="hs-identifier hs-var">j</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Maybe Color -&gt; Color
+forall a. HasCallStack =&gt; Maybe a -&gt; a
+</span><span class="hs-identifier hs-var">fromJust</span></span><span> </span><span class="annot"><span class="annottext">(Maybe Color -&gt; Color) -&gt; Maybe Color -&gt; Color
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">CubieEmbed -&gt; Face -&gt; Maybe Color
+</span><a href="Cube.html#cubieColor"><span class="hs-identifier hs-var">cubieColor</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Face -&gt; CubieEmbed
+</span><a href="#local-6989586621679032909"><span class="hs-identifier hs-var">embedding</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032912"><span class="hs-identifier hs-var">i</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032911"><span class="hs-identifier hs-var">j</span></a></span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="#local-6989586621679032914"><span class="hs-identifier hs-var">f</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="#local-6989586621679032914"><span class="hs-identifier hs-var">f</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-81"></span><span>                     </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679032912"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032912"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-glyph">..</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span id="local-6989586621679032911"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032911"><span class="hs-identifier hs-var">j</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-glyph">..</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">]</span><span class="hs-special">]</span><span>
+</span><span id="line-82"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-83"></span><span>    </span><span id="local-6989586621679032909"><span class="annot"><span class="annottext">embedding :: Int -&gt; Int -&gt; Face -&gt; CubieEmbed
+</span><a href="#local-6989586621679032909"><span class="hs-identifier hs-var hs-var">embedding</span></a></span></span><span> </span><span id="local-6989586621679032880"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032880"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span id="local-6989586621679032879"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032879"><span class="hs-identifier hs-var">j</span></a></span></span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Up"><span class="hs-identifier hs-var">Up</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CubieEmbed :: Cubie -&gt; (Int, Int, Int) -&gt; CubieEmbed
+</span><a href="Cube.html#CubieEmbed"><span class="hs-identifier hs-type">CubieEmbed</span></a></span><span> </span><span class="hs-special">{</span><span class="annot"><span class="annottext">cubie :: Cubie
+</span><a href="Cube.html#cubie"><span class="hs-identifier hs-var">cubie</span></a></span><span class="hs-glyph">=</span><span class="annot"><span class="annottext">Cube
+</span><a href="#local-6989586621679032915"><span class="hs-identifier hs-var">c</span></a></span><span class="annot"><span class="annottext">Cube -&gt; (Int, Int, Int) -&gt; Cubie
+forall (a :: * -&gt; * -&gt; *) e i.
+(IArray a e, Ix i) =&gt;
+a i e -&gt; i -&gt; e
+</span><span class="hs-operator hs-var">!</span></span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032880"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032879"><span class="hs-identifier hs-var">j</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">location :: (Int, Int, Int)
+</span><a href="Cube.html#location"><span class="hs-identifier hs-var">location</span></a></span><span class="hs-glyph">=</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032880"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032879"><span class="hs-identifier hs-var">j</span></a></span><span class="hs-special">)</span><span class="hs-special">}</span><span>
+</span><span id="line-84"></span><span>    </span><span class="annot"><a href="#local-6989586621679032909"><span class="hs-identifier hs-var">embedding</span></a></span><span> </span><span id="local-6989586621679032877"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032877"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span id="local-6989586621679032876"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032876"><span class="hs-identifier hs-var">j</span></a></span></span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Down"><span class="hs-identifier hs-var">Down</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CubieEmbed :: Cubie -&gt; (Int, Int, Int) -&gt; CubieEmbed
+</span><a href="Cube.html#CubieEmbed"><span class="hs-identifier hs-type">CubieEmbed</span></a></span><span> </span><span class="hs-special">{</span><span class="annot"><span class="annottext">cubie :: Cubie
+</span><a href="Cube.html#cubie"><span class="hs-identifier hs-var">cubie</span></a></span><span class="hs-glyph">=</span><span class="annot"><span class="annottext">Cube
+</span><a href="#local-6989586621679032915"><span class="hs-identifier hs-var">c</span></a></span><span class="annot"><span class="annottext">Cube -&gt; (Int, Int, Int) -&gt; Cubie
+forall (a :: * -&gt; * -&gt; *) e i.
+(IArray a e, Ix i) =&gt;
+a i e -&gt; i -&gt; e
+</span><span class="hs-operator hs-var">!</span></span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032877"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032876"><span class="hs-identifier hs-var">j</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">location :: (Int, Int, Int)
+</span><a href="Cube.html#location"><span class="hs-identifier hs-var">location</span></a></span><span class="hs-glyph">=</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032877"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032876"><span class="hs-identifier hs-var">j</span></a></span><span class="hs-special">)</span><span class="hs-special">}</span><span>
+</span><span id="line-85"></span><span>    </span><span class="annot"><a href="#local-6989586621679032909"><span class="hs-identifier hs-var">embedding</span></a></span><span> </span><span id="local-6989586621679032875"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032875"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span id="local-6989586621679032874"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032874"><span class="hs-identifier hs-var">j</span></a></span></span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Front"><span class="hs-identifier hs-var">Front</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CubieEmbed :: Cubie -&gt; (Int, Int, Int) -&gt; CubieEmbed
+</span><a href="Cube.html#CubieEmbed"><span class="hs-identifier hs-type">CubieEmbed</span></a></span><span> </span><span class="hs-special">{</span><span class="annot"><span class="annottext">cubie :: Cubie
+</span><a href="Cube.html#cubie"><span class="hs-identifier hs-var">cubie</span></a></span><span class="hs-glyph">=</span><span class="annot"><span class="annottext">Cube
+</span><a href="#local-6989586621679032915"><span class="hs-identifier hs-var">c</span></a></span><span class="annot"><span class="annottext">Cube -&gt; (Int, Int, Int) -&gt; Cubie
+forall (a :: * -&gt; * -&gt; *) e i.
+(IArray a e, Ix i) =&gt;
+a i e -&gt; i -&gt; e
+</span><span class="hs-operator hs-var">!</span></span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032875"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032874"><span class="hs-identifier hs-var">j</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">location :: (Int, Int, Int)
+</span><a href="Cube.html#location"><span class="hs-identifier hs-var">location</span></a></span><span class="hs-glyph">=</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032875"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032874"><span class="hs-identifier hs-var">j</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">)</span><span class="hs-special">}</span><span>
+</span><span id="line-86"></span><span>    </span><span class="annot"><a href="#local-6989586621679032909"><span class="hs-identifier hs-var">embedding</span></a></span><span> </span><span id="local-6989586621679032873"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032873"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span id="local-6989586621679032872"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032872"><span class="hs-identifier hs-var">j</span></a></span></span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Back"><span class="hs-identifier hs-var">Back</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CubieEmbed :: Cubie -&gt; (Int, Int, Int) -&gt; CubieEmbed
+</span><a href="Cube.html#CubieEmbed"><span class="hs-identifier hs-type">CubieEmbed</span></a></span><span> </span><span class="hs-special">{</span><span class="annot"><span class="annottext">cubie :: Cubie
+</span><a href="Cube.html#cubie"><span class="hs-identifier hs-var">cubie</span></a></span><span class="hs-glyph">=</span><span class="annot"><span class="annottext">Cube
+</span><a href="#local-6989586621679032915"><span class="hs-identifier hs-var">c</span></a></span><span class="annot"><span class="annottext">Cube -&gt; (Int, Int, Int) -&gt; Cubie
+forall (a :: * -&gt; * -&gt; *) e i.
+(IArray a e, Ix i) =&gt;
+a i e -&gt; i -&gt; e
+</span><span class="hs-operator hs-var">!</span></span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032873"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032872"><span class="hs-identifier hs-var">j</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">location :: (Int, Int, Int)
+</span><a href="Cube.html#location"><span class="hs-identifier hs-var">location</span></a></span><span class="hs-glyph">=</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032873"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032872"><span class="hs-identifier hs-var">j</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span class="hs-special">}</span><span>
+</span><span id="line-87"></span><span>    </span><span class="annot"><a href="#local-6989586621679032909"><span class="hs-identifier hs-var">embedding</span></a></span><span> </span><span id="local-6989586621679032871"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032871"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span id="local-6989586621679032870"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032870"><span class="hs-identifier hs-var">j</span></a></span></span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Right"><span class="hs-identifier hs-var">Right</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CubieEmbed :: Cubie -&gt; (Int, Int, Int) -&gt; CubieEmbed
+</span><a href="Cube.html#CubieEmbed"><span class="hs-identifier hs-type">CubieEmbed</span></a></span><span> </span><span class="hs-special">{</span><span class="annot"><span class="annottext">cubie :: Cubie
+</span><a href="Cube.html#cubie"><span class="hs-identifier hs-var">cubie</span></a></span><span class="hs-glyph">=</span><span class="annot"><span class="annottext">Cube
+</span><a href="#local-6989586621679032915"><span class="hs-identifier hs-var">c</span></a></span><span class="annot"><span class="annottext">Cube -&gt; (Int, Int, Int) -&gt; Cubie
+forall (a :: * -&gt; * -&gt; *) e i.
+(IArray a e, Ix i) =&gt;
+a i e -&gt; i -&gt; e
+</span><span class="hs-operator hs-var">!</span></span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032870"><span class="hs-identifier hs-var">j</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032871"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">location :: (Int, Int, Int)
+</span><a href="Cube.html#location"><span class="hs-identifier hs-var">location</span></a></span><span class="hs-glyph">=</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032870"><span class="hs-identifier hs-var">j</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032871"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">)</span><span class="hs-special">}</span><span>
+</span><span id="line-88"></span><span>    </span><span class="annot"><a href="#local-6989586621679032909"><span class="hs-identifier hs-var">embedding</span></a></span><span> </span><span id="local-6989586621679032869"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032869"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span id="local-6989586621679032868"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032868"><span class="hs-identifier hs-var">j</span></a></span></span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Left"><span class="hs-identifier hs-var">Left</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CubieEmbed :: Cubie -&gt; (Int, Int, Int) -&gt; CubieEmbed
+</span><a href="Cube.html#CubieEmbed"><span class="hs-identifier hs-type">CubieEmbed</span></a></span><span> </span><span class="hs-special">{</span><span class="annot"><span class="annottext">cubie :: Cubie
+</span><a href="Cube.html#cubie"><span class="hs-identifier hs-var">cubie</span></a></span><span class="hs-glyph">=</span><span class="annot"><span class="annottext">Cube
+</span><a href="#local-6989586621679032915"><span class="hs-identifier hs-var">c</span></a></span><span class="annot"><span class="annottext">Cube -&gt; (Int, Int, Int) -&gt; Cubie
+forall (a :: * -&gt; * -&gt; *) e i.
+(IArray a e, Ix i) =&gt;
+a i e -&gt; i -&gt; e
+</span><span class="hs-operator hs-var">!</span></span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032868"><span class="hs-identifier hs-var">j</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032869"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">location :: (Int, Int, Int)
+</span><a href="Cube.html#location"><span class="hs-identifier hs-var">location</span></a></span><span class="hs-glyph">=</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032868"><span class="hs-identifier hs-var">j</span></a></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032869"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">)</span><span class="hs-special">}</span><span>
+</span><span id="line-89"></span><span>
+</span><span id="line-90"></span><span>
+</span><span id="line-91"></span><span class="annot"><a href="Cube.html#cubeNet"><span class="hs-identifier hs-type">cubeNet</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Cube.html#Cube"><span class="hs-identifier hs-type">Cube</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-92"></span><span id="cubeNet"><span class="annot"><span class="annottext">cubeNet :: Cube -&gt; String
+</span><a href="Cube.html#cubeNet"><span class="hs-identifier hs-var hs-var">cubeNet</span></a></span></span><span> </span><span id="local-6989586621679032866"><span class="annot"><span class="annottext">Cube
+</span><a href="#local-6989586621679032866"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; [String] -&gt; String
+</span><span class="hs-identifier hs-var">format</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="Cube.html#emptyNet"><span class="hs-identifier hs-var">emptyNet</span></a></span><span> </span><span class="annot"><span class="annottext">([String] -&gt; String) -&gt; [String] -&gt; String
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(Color -&gt; String) -&gt; [Color] -&gt; [String]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">Color -&gt; String
+forall a. Show a =&gt; a -&gt; String
+</span><span class="hs-identifier hs-var">show</span></span><span> </span><span class="annot"><span class="annottext">[Color]
+</span><a href="#local-6989586621679032862"><span class="hs-identifier hs-var">colors</span></a></span><span>
+</span><span id="line-93"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-94"></span><span>    </span><span id="local-6989586621679032862"><span class="annot"><span class="annottext">colors :: [Color]
+</span><a href="#local-6989586621679032862"><span class="hs-identifier hs-var hs-var">colors</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Cube -&gt; Face -&gt; Array (Int, Int) Color
+</span><a href="Cube.html#getFace"><span class="hs-identifier hs-var">getFace</span></a></span><span> </span><span class="annot"><span class="annottext">Cube
+</span><a href="#local-6989586621679032866"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Up"><span class="hs-identifier hs-var">Up</span></a></span><span> </span><span class="annot"><span class="annottext">Array (Int, Int) Color -&gt; (Int, Int) -&gt; Color
+forall (a :: * -&gt; * -&gt; *) e i.
+(IArray a e, Ix i) =&gt;
+a i e -&gt; i -&gt; e
+</span><span class="hs-operator hs-var">!</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032811"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032810"><span class="hs-identifier hs-var">j</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679032810"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032810"><span class="hs-identifier hs-var">j</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-glyph">..</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span id="local-6989586621679032811"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032811"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-glyph">..</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">]</span><span class="hs-special">]</span><span>
+</span><span id="line-95"></span><span>      </span><span class="annot"><span class="annottext">[Color] -&gt; [Color] -&gt; [Color]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Cube -&gt; Face -&gt; Array (Int, Int) Color
+</span><a href="Cube.html#getFace"><span class="hs-identifier hs-var">getFace</span></a></span><span> </span><span class="annot"><span class="annottext">Cube
+</span><a href="#local-6989586621679032866"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Left"><span class="hs-identifier hs-var">Left</span></a></span><span> </span><span class="annot"><span class="annottext">Array (Int, Int) Color -&gt; (Int, Int) -&gt; Color
+forall (a :: * -&gt; * -&gt; *) e i.
+(IArray a e, Ix i) =&gt;
+a i e -&gt; i -&gt; e
+</span><span class="hs-operator hs-var">!</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032809"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032808"><span class="hs-identifier hs-var">j</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679032808"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032808"><span class="hs-identifier hs-var">j</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-glyph">..</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span id="local-6989586621679032809"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032809"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-glyph">..</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">]</span><span class="hs-special">]</span><span>
+</span><span id="line-96"></span><span>      </span><span class="annot"><span class="annottext">[Color] -&gt; [Color] -&gt; [Color]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Cube -&gt; Face -&gt; Array (Int, Int) Color
+</span><a href="Cube.html#getFace"><span class="hs-identifier hs-var">getFace</span></a></span><span> </span><span class="annot"><span class="annottext">Cube
+</span><a href="#local-6989586621679032866"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Front"><span class="hs-identifier hs-var">Front</span></a></span><span> </span><span class="annot"><span class="annottext">Array (Int, Int) Color -&gt; (Int, Int) -&gt; Color
+forall (a :: * -&gt; * -&gt; *) e i.
+(IArray a e, Ix i) =&gt;
+a i e -&gt; i -&gt; e
+</span><span class="hs-operator hs-var">!</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032807"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032806"><span class="hs-identifier hs-var">j</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679032806"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032806"><span class="hs-identifier hs-var">j</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-glyph">..</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span id="local-6989586621679032807"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032807"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-glyph">..</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">]</span><span class="hs-special">]</span><span>
+</span><span id="line-97"></span><span>      </span><span class="annot"><span class="annottext">[Color] -&gt; [Color] -&gt; [Color]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Cube -&gt; Face -&gt; Array (Int, Int) Color
+</span><a href="Cube.html#getFace"><span class="hs-identifier hs-var">getFace</span></a></span><span> </span><span class="annot"><span class="annottext">Cube
+</span><a href="#local-6989586621679032866"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Right"><span class="hs-identifier hs-var">Right</span></a></span><span> </span><span class="annot"><span class="annottext">Array (Int, Int) Color -&gt; (Int, Int) -&gt; Color
+forall (a :: * -&gt; * -&gt; *) e i.
+(IArray a e, Ix i) =&gt;
+a i e -&gt; i -&gt; e
+</span><span class="hs-operator hs-var">!</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032805"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032804"><span class="hs-identifier hs-var">j</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679032804"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032804"><span class="hs-identifier hs-var">j</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-glyph">..</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span id="local-6989586621679032805"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032805"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-glyph">..</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">]</span><span class="hs-special">]</span><span>
+</span><span id="line-98"></span><span>      </span><span class="annot"><span class="annottext">[Color] -&gt; [Color] -&gt; [Color]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Cube -&gt; Face -&gt; Array (Int, Int) Color
+</span><a href="Cube.html#getFace"><span class="hs-identifier hs-var">getFace</span></a></span><span> </span><span class="annot"><span class="annottext">Cube
+</span><a href="#local-6989586621679032866"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Back"><span class="hs-identifier hs-var">Back</span></a></span><span> </span><span class="annot"><span class="annottext">Array (Int, Int) Color -&gt; (Int, Int) -&gt; Color
+forall (a :: * -&gt; * -&gt; *) e i.
+(IArray a e, Ix i) =&gt;
+a i e -&gt; i -&gt; e
+</span><span class="hs-operator hs-var">!</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032803"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032802"><span class="hs-identifier hs-var">j</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679032802"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032802"><span class="hs-identifier hs-var">j</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-glyph">..</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span id="local-6989586621679032803"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032803"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-glyph">..</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">]</span><span class="hs-special">]</span><span>
+</span><span id="line-99"></span><span>      </span><span class="annot"><span class="annottext">[Color] -&gt; [Color] -&gt; [Color]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Cube -&gt; Face -&gt; Array (Int, Int) Color
+</span><a href="Cube.html#getFace"><span class="hs-identifier hs-var">getFace</span></a></span><span> </span><span class="annot"><span class="annottext">Cube
+</span><a href="#local-6989586621679032866"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Down"><span class="hs-identifier hs-var">Down</span></a></span><span> </span><span class="annot"><span class="annottext">Array (Int, Int) Color -&gt; (Int, Int) -&gt; Color
+forall (a :: * -&gt; * -&gt; *) e i.
+(IArray a e, Ix i) =&gt;
+a i e -&gt; i -&gt; e
+</span><span class="hs-operator hs-var">!</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032801"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032800"><span class="hs-identifier hs-var">j</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679032800"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032800"><span class="hs-identifier hs-var">j</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-glyph">..</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span id="local-6989586621679032801"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032801"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-glyph">..</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">]</span><span class="hs-special">]</span><span>
+</span><span id="line-100"></span><span>
+</span><span id="line-101"></span><span class="annot"><a href="Cube.html#cubieColor"><span class="hs-identifier hs-type">cubieColor</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Cube.html#CubieEmbed"><span class="hs-identifier hs-type">CubieEmbed</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Cube.html#Face"><span class="hs-identifier hs-type">Face</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Cube.html#Color"><span class="hs-identifier hs-type">Color</span></a></span><span>
+</span><span id="line-102"></span><span id="cubieColor"><span class="annot"><span class="annottext">cubieColor :: CubieEmbed -&gt; Face -&gt; Maybe Color
+</span><a href="Cube.html#cubieColor"><span class="hs-identifier hs-var hs-var">cubieColor</span></a></span></span><span> </span><span class="annot"><a href="Cube.html#CubieEmbed"><span class="hs-identifier hs-type">CubieEmbed</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">cubie :: CubieEmbed -&gt; Cubie
+</span><a href="Cube.html#cubie"><span class="hs-identifier hs-var">cubie</span></a></span><span class="hs-glyph">=</span><span class="annot"><a href="Cube.html#Center"><span class="hs-identifier hs-type">Center</span></a></span><span> </span><span id="local-6989586621679032799"><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032799"><span class="hs-identifier hs-var">c</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">location :: CubieEmbed -&gt; (Int, Int, Int)
+</span><a href="Cube.html#location"><span class="hs-identifier hs-var">location</span></a></span><span class="hs-glyph">=</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">}</span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Up"><span class="hs-identifier hs-var">Up</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Maybe Color
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032799"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-103"></span><span class="annot"><a href="Cube.html#cubieColor"><span class="hs-identifier hs-var">cubieColor</span></a></span><span> </span><span class="annot"><a href="Cube.html#CubieEmbed"><span class="hs-identifier hs-type">CubieEmbed</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">cubie :: CubieEmbed -&gt; Cubie
+</span><a href="Cube.html#cubie"><span class="hs-identifier hs-var">cubie</span></a></span><span class="hs-glyph">=</span><span class="annot"><a href="Cube.html#Edge"><span class="hs-identifier hs-type">Edge</span></a></span><span> </span><span id="local-6989586621679032798"><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032798"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="annot"><span class="annottext">Color
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">location :: CubieEmbed -&gt; (Int, Int, Int)
+</span><a href="Cube.html#location"><span class="hs-identifier hs-var">location</span></a></span><span class="hs-glyph">=</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">}</span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Up"><span class="hs-identifier hs-var">Up</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Maybe Color
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032798"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-104"></span><span class="annot"><a href="Cube.html#cubieColor"><span class="hs-identifier hs-var">cubieColor</span></a></span><span> </span><span class="annot"><a href="Cube.html#CubieEmbed"><span class="hs-identifier hs-type">CubieEmbed</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">cubie :: CubieEmbed -&gt; Cubie
+</span><a href="Cube.html#cubie"><span class="hs-identifier hs-var">cubie</span></a></span><span class="hs-glyph">=</span><span class="annot"><a href="Cube.html#Corner"><span class="hs-identifier hs-type">Corner</span></a></span><span> </span><span id="local-6989586621679032797"><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032797"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="annot"><span class="annottext">Color
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">Color
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">location :: CubieEmbed -&gt; (Int, Int, Int)
+</span><a href="Cube.html#location"><span class="hs-identifier hs-var">location</span></a></span><span class="hs-glyph">=</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">}</span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Up"><span class="hs-identifier hs-var">Up</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Maybe Color
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032797"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-105"></span><span class="annot"><a href="Cube.html#cubieColor"><span class="hs-identifier hs-var">cubieColor</span></a></span><span> </span><span class="annot"><span class="annottext">CubieEmbed
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Up"><span class="hs-identifier hs-var">Up</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe Color
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-106"></span><span class="annot"><a href="Cube.html#cubieColor"><span class="hs-identifier hs-var">cubieColor</span></a></span><span> </span><span class="annot"><a href="Cube.html#CubieEmbed"><span class="hs-identifier hs-type">CubieEmbed</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">cubie :: CubieEmbed -&gt; Cubie
+</span><a href="Cube.html#cubie"><span class="hs-identifier hs-var">cubie</span></a></span><span class="hs-glyph">=</span><span class="annot"><a href="Cube.html#Center"><span class="hs-identifier hs-type">Center</span></a></span><span> </span><span id="local-6989586621679032796"><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032796"><span class="hs-identifier hs-var">c</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">location :: CubieEmbed -&gt; (Int, Int, Int)
+</span><a href="Cube.html#location"><span class="hs-identifier hs-var">location</span></a></span><span class="hs-glyph">=</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">}</span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Down"><span class="hs-identifier hs-var">Down</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Maybe Color
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032796"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-107"></span><span class="annot"><a href="Cube.html#cubieColor"><span class="hs-identifier hs-var">cubieColor</span></a></span><span> </span><span class="annot"><a href="Cube.html#CubieEmbed"><span class="hs-identifier hs-type">CubieEmbed</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">cubie :: CubieEmbed -&gt; Cubie
+</span><a href="Cube.html#cubie"><span class="hs-identifier hs-var">cubie</span></a></span><span class="hs-glyph">=</span><span class="annot"><a href="Cube.html#Edge"><span class="hs-identifier hs-type">Edge</span></a></span><span> </span><span id="local-6989586621679032795"><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032795"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="annot"><span class="annottext">Color
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">location :: CubieEmbed -&gt; (Int, Int, Int)
+</span><a href="Cube.html#location"><span class="hs-identifier hs-var">location</span></a></span><span class="hs-glyph">=</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">}</span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Down"><span class="hs-identifier hs-var">Down</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Maybe Color
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032795"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-108"></span><span class="annot"><a href="Cube.html#cubieColor"><span class="hs-identifier hs-var">cubieColor</span></a></span><span> </span><span class="annot"><a href="Cube.html#CubieEmbed"><span class="hs-identifier hs-type">CubieEmbed</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">cubie :: CubieEmbed -&gt; Cubie
+</span><a href="Cube.html#cubie"><span class="hs-identifier hs-var">cubie</span></a></span><span class="hs-glyph">=</span><span class="annot"><a href="Cube.html#Corner"><span class="hs-identifier hs-type">Corner</span></a></span><span> </span><span id="local-6989586621679032794"><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032794"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="annot"><span class="annottext">Color
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">Color
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">location :: CubieEmbed -&gt; (Int, Int, Int)
+</span><a href="Cube.html#location"><span class="hs-identifier hs-var">location</span></a></span><span class="hs-glyph">=</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">}</span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Down"><span class="hs-identifier hs-var">Down</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Maybe Color
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032794"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-109"></span><span class="annot"><a href="Cube.html#cubieColor"><span class="hs-identifier hs-var">cubieColor</span></a></span><span> </span><span class="annot"><span class="annottext">CubieEmbed
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Down"><span class="hs-identifier hs-var">Down</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe Color
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-110"></span><span class="annot"><a href="Cube.html#cubieColor"><span class="hs-identifier hs-var">cubieColor</span></a></span><span> </span><span class="annot"><a href="Cube.html#CubieEmbed"><span class="hs-identifier hs-type">CubieEmbed</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">cubie :: CubieEmbed -&gt; Cubie
+</span><a href="Cube.html#cubie"><span class="hs-identifier hs-var">cubie</span></a></span><span class="hs-glyph">=</span><span class="annot"><a href="Cube.html#Center"><span class="hs-identifier hs-type">Center</span></a></span><span> </span><span id="local-6989586621679032793"><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032793"><span class="hs-identifier hs-var">c</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">location :: CubieEmbed -&gt; (Int, Int, Int)
+</span><a href="Cube.html#location"><span class="hs-identifier hs-var">location</span></a></span><span class="hs-glyph">=</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">}</span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Front"><span class="hs-identifier hs-var">Front</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Maybe Color
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032793"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-111"></span><span class="annot"><a href="Cube.html#cubieColor"><span class="hs-identifier hs-var">cubieColor</span></a></span><span> </span><span class="annot"><a href="Cube.html#CubieEmbed"><span class="hs-identifier hs-type">CubieEmbed</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">cubie :: CubieEmbed -&gt; Cubie
+</span><a href="Cube.html#cubie"><span class="hs-identifier hs-var">cubie</span></a></span><span class="hs-glyph">=</span><span class="annot"><a href="Cube.html#Edge"><span class="hs-identifier hs-type">Edge</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><span class="hs-identifier">_</span></span><span> </span><span id="local-6989586621679032792"><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032792"><span class="hs-identifier hs-var">c</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">location :: CubieEmbed -&gt; (Int, Int, Int)
+</span><a href="Cube.html#location"><span class="hs-identifier hs-var">location</span></a></span><span class="hs-glyph">=</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">}</span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Front"><span class="hs-identifier hs-var">Front</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Maybe Color
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032792"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-112"></span><span class="annot"><a href="Cube.html#cubieColor"><span class="hs-identifier hs-var">cubieColor</span></a></span><span> </span><span class="annot"><a href="Cube.html#CubieEmbed"><span class="hs-identifier hs-type">CubieEmbed</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">cubie :: CubieEmbed -&gt; Cubie
+</span><a href="Cube.html#cubie"><span class="hs-identifier hs-var">cubie</span></a></span><span class="hs-glyph">=</span><span class="annot"><a href="Cube.html#Edge"><span class="hs-identifier hs-type">Edge</span></a></span><span> </span><span id="local-6989586621679032791"><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032791"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="annot"><span class="annottext">Color
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">location :: CubieEmbed -&gt; (Int, Int, Int)
+</span><a href="Cube.html#location"><span class="hs-identifier hs-var">location</span></a></span><span class="hs-glyph">=</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">}</span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Front"><span class="hs-identifier hs-var">Front</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Maybe Color
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032791"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-113"></span><span class="annot"><a href="Cube.html#cubieColor"><span class="hs-identifier hs-var">cubieColor</span></a></span><span> </span><span class="annot"><a href="Cube.html#CubieEmbed"><span class="hs-identifier hs-type">CubieEmbed</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">cubie :: CubieEmbed -&gt; Cubie
+</span><a href="Cube.html#cubie"><span class="hs-identifier hs-var">cubie</span></a></span><span class="hs-glyph">=</span><span class="annot"><a href="Cube.html#Corner"><span class="hs-identifier hs-type">Corner</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><span class="hs-identifier">_</span></span><span> </span><span id="local-6989586621679032790"><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032790"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span id="local-6989586621679032789"><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032789"><span class="hs-identifier hs-var">d</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">location :: CubieEmbed -&gt; (Int, Int, Int)
+</span><a href="Cube.html#location"><span class="hs-identifier hs-var">location</span></a></span><span class="hs-glyph">=</span><span class="hs-special">(</span><span id="local-6989586621679032788"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032788"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679032787"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032787"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">}</span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Front"><span class="hs-identifier hs-var">Front</span></a></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-114"></span><span>  </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032788"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032787"><span class="hs-identifier hs-var">y</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Maybe Color
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032790"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Maybe Color
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032789"><span class="hs-identifier hs-var">d</span></a></span><span>
+</span><span id="line-115"></span><span class="annot"><a href="Cube.html#cubieColor"><span class="hs-identifier hs-var">cubieColor</span></a></span><span> </span><span class="annot"><span class="annottext">CubieEmbed
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Front"><span class="hs-identifier hs-var">Front</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe Color
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-116"></span><span class="annot"><a href="Cube.html#cubieColor"><span class="hs-identifier hs-var">cubieColor</span></a></span><span> </span><span class="annot"><a href="Cube.html#CubieEmbed"><span class="hs-identifier hs-type">CubieEmbed</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">cubie :: CubieEmbed -&gt; Cubie
+</span><a href="Cube.html#cubie"><span class="hs-identifier hs-var">cubie</span></a></span><span class="hs-glyph">=</span><span class="annot"><a href="Cube.html#Center"><span class="hs-identifier hs-type">Center</span></a></span><span> </span><span id="local-6989586621679032786"><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032786"><span class="hs-identifier hs-var">c</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">location :: CubieEmbed -&gt; (Int, Int, Int)
+</span><a href="Cube.html#location"><span class="hs-identifier hs-var">location</span></a></span><span class="hs-glyph">=</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">}</span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Back"><span class="hs-identifier hs-var">Back</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Maybe Color
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032786"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-117"></span><span class="annot"><a href="Cube.html#cubieColor"><span class="hs-identifier hs-var">cubieColor</span></a></span><span> </span><span class="annot"><a href="Cube.html#CubieEmbed"><span class="hs-identifier hs-type">CubieEmbed</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">cubie :: CubieEmbed -&gt; Cubie
+</span><a href="Cube.html#cubie"><span class="hs-identifier hs-var">cubie</span></a></span><span class="hs-glyph">=</span><span class="annot"><a href="Cube.html#Edge"><span class="hs-identifier hs-type">Edge</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><span class="hs-identifier">_</span></span><span> </span><span id="local-6989586621679032785"><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032785"><span class="hs-identifier hs-var">c</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">location :: CubieEmbed -&gt; (Int, Int, Int)
+</span><a href="Cube.html#location"><span class="hs-identifier hs-var">location</span></a></span><span class="hs-glyph">=</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">}</span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Back"><span class="hs-identifier hs-var">Back</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Maybe Color
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032785"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-118"></span><span class="annot"><a href="Cube.html#cubieColor"><span class="hs-identifier hs-var">cubieColor</span></a></span><span> </span><span class="annot"><a href="Cube.html#CubieEmbed"><span class="hs-identifier hs-type">CubieEmbed</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">cubie :: CubieEmbed -&gt; Cubie
+</span><a href="Cube.html#cubie"><span class="hs-identifier hs-var">cubie</span></a></span><span class="hs-glyph">=</span><span class="annot"><a href="Cube.html#Edge"><span class="hs-identifier hs-type">Edge</span></a></span><span> </span><span id="local-6989586621679032784"><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032784"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="annot"><span class="annottext">Color
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">location :: CubieEmbed -&gt; (Int, Int, Int)
+</span><a href="Cube.html#location"><span class="hs-identifier hs-var">location</span></a></span><span class="hs-glyph">=</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">}</span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Back"><span class="hs-identifier hs-var">Back</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Maybe Color
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032784"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-119"></span><span class="annot"><a href="Cube.html#cubieColor"><span class="hs-identifier hs-var">cubieColor</span></a></span><span> </span><span class="annot"><a href="Cube.html#CubieEmbed"><span class="hs-identifier hs-type">CubieEmbed</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">cubie :: CubieEmbed -&gt; Cubie
+</span><a href="Cube.html#cubie"><span class="hs-identifier hs-var">cubie</span></a></span><span class="hs-glyph">=</span><span class="annot"><a href="Cube.html#Corner"><span class="hs-identifier hs-type">Corner</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><span class="hs-identifier">_</span></span><span> </span><span id="local-6989586621679032783"><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032783"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span id="local-6989586621679032782"><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032782"><span class="hs-identifier hs-var">d</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">location :: CubieEmbed -&gt; (Int, Int, Int)
+</span><a href="Cube.html#location"><span class="hs-identifier hs-var">location</span></a></span><span class="hs-glyph">=</span><span class="hs-special">(</span><span id="local-6989586621679032781"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032781"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679032780"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032780"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">}</span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Back"><span class="hs-identifier hs-var">Back</span></a></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-120"></span><span>  </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032781"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032780"><span class="hs-identifier hs-var">y</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Maybe Color
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032782"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Maybe Color
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032783"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-121"></span><span class="annot"><a href="Cube.html#cubieColor"><span class="hs-identifier hs-var">cubieColor</span></a></span><span> </span><span class="annot"><span class="annottext">CubieEmbed
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Back"><span class="hs-identifier hs-var">Back</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe Color
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-122"></span><span class="annot"><a href="Cube.html#cubieColor"><span class="hs-identifier hs-var">cubieColor</span></a></span><span> </span><span class="annot"><a href="Cube.html#CubieEmbed"><span class="hs-identifier hs-type">CubieEmbed</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">cubie :: CubieEmbed -&gt; Cubie
+</span><a href="Cube.html#cubie"><span class="hs-identifier hs-var">cubie</span></a></span><span class="hs-glyph">=</span><span class="annot"><a href="Cube.html#Center"><span class="hs-identifier hs-type">Center</span></a></span><span> </span><span id="local-6989586621679032779"><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032779"><span class="hs-identifier hs-var">c</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">location :: CubieEmbed -&gt; (Int, Int, Int)
+</span><a href="Cube.html#location"><span class="hs-identifier hs-var">location</span></a></span><span class="hs-glyph">=</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">}</span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Right"><span class="hs-identifier hs-var">Right</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Maybe Color
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032779"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-123"></span><span class="annot"><a href="Cube.html#cubieColor"><span class="hs-identifier hs-var">cubieColor</span></a></span><span> </span><span class="annot"><a href="Cube.html#CubieEmbed"><span class="hs-identifier hs-type">CubieEmbed</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">cubie :: CubieEmbed -&gt; Cubie
+</span><a href="Cube.html#cubie"><span class="hs-identifier hs-var">cubie</span></a></span><span class="hs-glyph">=</span><span class="annot"><a href="Cube.html#Edge"><span class="hs-identifier hs-type">Edge</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><span class="hs-identifier">_</span></span><span> </span><span id="local-6989586621679032778"><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032778"><span class="hs-identifier hs-var">c</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">location :: CubieEmbed -&gt; (Int, Int, Int)
+</span><a href="Cube.html#location"><span class="hs-identifier hs-var">location</span></a></span><span class="hs-glyph">=</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">}</span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Right"><span class="hs-identifier hs-var">Right</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Maybe Color
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032778"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-124"></span><span class="annot"><a href="Cube.html#cubieColor"><span class="hs-identifier hs-var">cubieColor</span></a></span><span> </span><span class="annot"><a href="Cube.html#CubieEmbed"><span class="hs-identifier hs-type">CubieEmbed</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">cubie :: CubieEmbed -&gt; Cubie
+</span><a href="Cube.html#cubie"><span class="hs-identifier hs-var">cubie</span></a></span><span class="hs-glyph">=</span><span class="annot"><a href="Cube.html#Corner"><span class="hs-identifier hs-type">Corner</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><span class="hs-identifier">_</span></span><span> </span><span id="local-6989586621679032777"><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032777"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span id="local-6989586621679032776"><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032776"><span class="hs-identifier hs-var">d</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">location :: CubieEmbed -&gt; (Int, Int, Int)
+</span><a href="Cube.html#location"><span class="hs-identifier hs-var">location</span></a></span><span class="hs-glyph">=</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679032775"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032775"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679032774"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032774"><span class="hs-identifier hs-var">z</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-special">}</span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Right"><span class="hs-identifier hs-var">Right</span></a></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-125"></span><span>  </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032775"><span class="hs-identifier hs-var">y</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032774"><span class="hs-identifier hs-var">z</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Maybe Color
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032777"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Maybe Color
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032776"><span class="hs-identifier hs-var">d</span></a></span><span>
+</span><span id="line-126"></span><span class="annot"><a href="Cube.html#cubieColor"><span class="hs-identifier hs-var">cubieColor</span></a></span><span> </span><span class="annot"><span class="annottext">CubieEmbed
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Right"><span class="hs-identifier hs-var">Right</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe Color
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-127"></span><span class="annot"><a href="Cube.html#cubieColor"><span class="hs-identifier hs-var">cubieColor</span></a></span><span> </span><span class="annot"><a href="Cube.html#CubieEmbed"><span class="hs-identifier hs-type">CubieEmbed</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">cubie :: CubieEmbed -&gt; Cubie
+</span><a href="Cube.html#cubie"><span class="hs-identifier hs-var">cubie</span></a></span><span class="hs-glyph">=</span><span class="annot"><a href="Cube.html#Center"><span class="hs-identifier hs-type">Center</span></a></span><span> </span><span id="local-6989586621679032773"><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032773"><span class="hs-identifier hs-var">c</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">location :: CubieEmbed -&gt; (Int, Int, Int)
+</span><a href="Cube.html#location"><span class="hs-identifier hs-var">location</span></a></span><span class="hs-glyph">=</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">}</span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Left"><span class="hs-identifier hs-var">Left</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Maybe Color
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032773"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-128"></span><span class="annot"><a href="Cube.html#cubieColor"><span class="hs-identifier hs-var">cubieColor</span></a></span><span> </span><span class="annot"><a href="Cube.html#CubieEmbed"><span class="hs-identifier hs-type">CubieEmbed</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">cubie :: CubieEmbed -&gt; Cubie
+</span><a href="Cube.html#cubie"><span class="hs-identifier hs-var">cubie</span></a></span><span class="hs-glyph">=</span><span class="annot"><a href="Cube.html#Edge"><span class="hs-identifier hs-type">Edge</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><span class="hs-identifier">_</span></span><span> </span><span id="local-6989586621679032772"><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032772"><span class="hs-identifier hs-var">c</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">location :: CubieEmbed -&gt; (Int, Int, Int)
+</span><a href="Cube.html#location"><span class="hs-identifier hs-var">location</span></a></span><span class="hs-glyph">=</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">}</span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Left"><span class="hs-identifier hs-var">Left</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Maybe Color
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032772"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-129"></span><span class="annot"><a href="Cube.html#cubieColor"><span class="hs-identifier hs-var">cubieColor</span></a></span><span> </span><span class="annot"><a href="Cube.html#CubieEmbed"><span class="hs-identifier hs-type">CubieEmbed</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">cubie :: CubieEmbed -&gt; Cubie
+</span><a href="Cube.html#cubie"><span class="hs-identifier hs-var">cubie</span></a></span><span class="hs-glyph">=</span><span class="annot"><a href="Cube.html#Corner"><span class="hs-identifier hs-type">Corner</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><span class="hs-identifier">_</span></span><span> </span><span id="local-6989586621679032771"><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032771"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span id="local-6989586621679032770"><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032770"><span class="hs-identifier hs-var">d</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">location :: CubieEmbed -&gt; (Int, Int, Int)
+</span><a href="Cube.html#location"><span class="hs-identifier hs-var">location</span></a></span><span class="hs-glyph">=</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679032769"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032769"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679032768"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032768"><span class="hs-identifier hs-var">z</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-special">}</span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Left"><span class="hs-identifier hs-var">Left</span></a></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-130"></span><span>  </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032769"><span class="hs-identifier hs-var">y</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679032768"><span class="hs-identifier hs-var">z</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Maybe Color
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032770"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Maybe Color
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="#local-6989586621679032771"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-131"></span><span class="annot"><a href="Cube.html#cubieColor"><span class="hs-identifier hs-var">cubieColor</span></a></span><span> </span><span class="annot"><span class="annottext">CubieEmbed
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="Cube.html#Left"><span class="hs-identifier hs-var">Left</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe Color
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-132"></span><span>
+</span><span id="line-133"></span><span class="annot"><a href="Cube.html#emptyNet"><span class="hs-identifier hs-type">emptyNet</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-134"></span><span id="emptyNet"><span class="annot"><span class="annottext">emptyNet :: String
+</span><a href="Cube.html#emptyNet"><span class="hs-identifier hs-var hs-var">emptyNet</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;\
+\       +-+-+-+\n\
+\       |{0}|{1}|{2}|\n\
+\       +-+-+-+\n\
+\       |{3}|{4}|{5}|\n\
+\       +-+-+-+\n\
+\       |{6}|{7}|{8}|\n\
+\       +-+-+-+\n\
+\+-+-+-++-+-+-++-+-+-++-+-+-+\n\
+\|{9}|{10}|{11}||{18}|{19}|{20}||{27}|{28}|{29}||{36}|{37}|{38}|\n\
+\+-+-+-++-+-+-++-+-+-++-+-+-+\n\
+\|{12}|{13}|{14}||{21}|{22}|{23}||{30}|{31}|{32}||{39}|{40}|{41}|\n\
+\+-+-+-++-+-+-++-+-+-++-+-+-+\n\
+\|{15}|{16}|{17}||{24}|{25}|{26}||{33}|{34}|{35}||{42}|{43}|{44}|\n\
+\+-+-+-++-+-+-++-+-+-++-+-+-+\n\
+\       +-+-+-+\n\
+\       |{45}|{46}|{47}|\n\
+\       +-+-+-+\n\
+\       |{48}|{49}|{50}|\n\
+\       +-+-+-+\n\
+\       |{51}|{52}|{53}|\n\
+\       +-+-+-+&quot;</span></span><span>
+</span><span id="line-156"></span></pre></body></html>
