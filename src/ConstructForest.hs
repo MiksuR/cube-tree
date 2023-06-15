@@ -23,7 +23,7 @@ module ConstructForest where
 import Cube
 
 import Control.Monad (join)
-import Data.List (permutations)
+import Data.Maybe (fromJust)
 import Data.Tree
 import Data.Set (Set, fromList, toList, delete, foldl', difference)
 import Data.Sequence (Seq(..), (><), (<|))
@@ -47,17 +47,21 @@ firstCorners = [ (embedFirst (c, r), edges, delete c corners, 0)
 buildNode :: LayerSeed -> (Layer, [LayerSeed])
 buildNode (layer, edgs, corns, n) = (layer, filter (valid layer) embedded)
   where
-    embedded = embedLayers <$> combinations isCorners layerSize
-                            $ if isCorners then corns else edgs
-    isCorners = even n
-    layerSize = if isCorners then 4-abs(n-3) else 6-abs((3*n-9) `div` 2)
+    embedded = embedLayers $ combinations isCorners layerSize
+                           $ if isCorners then corns else edgs
+    isCorners = odd n
+    layerSize = if isCorners then 4-abs(n-2) else 6-abs((3*n-6) `div` 2)
     embedLayers :: Seq [Cubie] -> [LayerSeed]
     embedLayers = foldr ((:) . embedLayer) []
-    embedLayer cs = ([ CubieEmbed { cubie = c, location = cubieLocation n i }
+    embedLayer :: [Cubie] -> LayerSeed
+    embedLayer cs = ([ CubieEmbed { cubie = c, location = cubieLocation (n+1) i }
                      | (c, i) <- zip cs [0..] ],
-                     if even n then edgs
-                     else difference edgs (fromList cs),
-                     if even n then difference corns (fromList cs)
+                     if isCorners then edgs
+                     else difference edgs (fromList $ cs ++ (rotate <$> cs)),
+                     if isCorners
+                     then difference
+                            corns (fromList $ cs ++ (rotate <$> cs)
+                                                 ++ (rotate . rotate <$> cs))
                      else corns, n+1)
 
 -- |Given a set of cubies, produce all possible rotations and permutations.
@@ -78,9 +82,7 @@ combinations isCorners n s = foldl' adjoiner Empty s
 cubieLocation :: Int             -- ^ layer number
               -> Int             -- ^ cubie index
               -> (Int, Int, Int) -- ^ coordinates
-cubieLocation 3 i = toTuple (permutations [0, 1, 2] !! i)
-  where
-    toTuple [a, b, c] = (a, b, c)
+cubieLocation 3 i = [(2,1,0),(2,0,1),(0,2,1),(1,2,0),(1,0,2),(0,1,2)] !! i
 cubieLocation n i = (!! i) $ map transform [(1,0,0), (0,1,0), (0,0,1)]
   where
     transform (a, b, c) = if n < 3 then (n*a, n*b, n*c)
@@ -88,6 +90,22 @@ cubieLocation n i = (!! i) $ map transform [(1,0,0), (0,1,0), (0,0,1)]
 
 -- |Test whether or not the cubies in the new layer share colours with those on the old layer.
 valid :: Layer -> LayerSeed -> Bool
-valid ol (nl, _, _, _) = and [ checkColors c | c <- nl ]
-  where
-    checkColors CubieEmbed {cubie = c, location = (x,y,z)} = undefined
+valid (o:_) (nl, _, _, 1) = and $ [ not $ shareColor n o | n <- nl ]
+                               ++ concat [ [ fromJust (cubieColor n f) /= faceToColor f
+                                           | f <- normalToFace <$> normals n ]
+                                         | n <- nl ]
+valid ol (nl, _, _, 2) = and [ not $ shareColor (ol !! i) (nl !! i) | i <- [0..2] ]
+valid ol (nl, _, _, 3) = and $ [ not $ shareColor (nl !! (2*i))   (ol !! i) | i <- [0..2] ]
+                            ++ [ not $ shareColor (nl !! (2*i+1)) (ol !! i) | i <- [0..2] ]
+                            ++ concat [ [ fromJust (cubieColor n f) /= faceToColor f
+                                        | f <- normalToFace <$> normals n ]
+                                      | n <- nl ]
+valid ol (nl, _, _, 4) = and $ [ not $ shareColor (ol !! (2-i))   (nl !! i) | i <- [0..2] ]
+                            ++ [ not $ shareColor (ol !! (5-i)) (nl !! i) | i <- [0..2] ]
+valid ol (nl, _, _, 5) = and $ [ not $ shareColor (nl !! i) (ol !! i) | i <- [0..2] ]
+                            ++ concat [ [ fromJust (cubieColor n f) /= faceToColor f
+                                        | f <- normalToFace <$> normals n ]
+                                      | n <- nl ]
+valid ol (n:_, _, _, 6) = and [ not $ shareColor n o | o <- ol ]
+valid _ ([],_,_,n) = n > 6
+valid _ _ = error "Invalid layer seed!"
