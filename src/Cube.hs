@@ -40,19 +40,42 @@ type Layer = [CubieEmbed]
 {-|
   Assuming the standard color scheme and orientation, where the white face is on top
   and green is in the front, the origin is at the front-up-left corner.
-  The axes are oriented as in the picture below.
+  The axes are oriented as follows:
 
-  TODO: Add picture
+  ```
+  x:  Right
+  y:  Down
+  z:  Towards the back
+  ```
 
   The orientation of the cubie is determined by the order of the colours in the type.
   See `corners` and `edges` for the standard orientations.
 -}
 type Cube = Array (Int, Int, Int) Cubie
 
-rotate :: Cubie -> Cubie
-rotate (Edge a b) = Edge b a
-rotate (Corner a b c) = Corner c a b
-rotate x = x
+cubiesToCube :: [CubieEmbed] -> Cube
+cubiesToCube cs = array ((0,0,0),(2,2,2)) $ fixedCubies
+                                         ++ [ (l, c)
+                                            | CubieEmbed { cubie=c, location=l } <- cs ]
+  where
+    fixedCubies = [((1,1,1),Inside), ((1,1,0),Center G), ((1,1,2),Center B), ((2,1,1),Center R),
+                  ((0,1,1),Center O), ((1,0,1),Center W), ((1,2,1), Center Y)]
+
+{-|
+  Returns the colour of the center cubie of the given face:
+  +----+------+-------+------+-------+------+
+  | Up | Down | Front | Back | Right | Left |
+  +----+------+-------+------+-------+------+
+  | W  |  Y   |  G    |   B  |   R   |   O  |
+  +----+------+-------+------+-------+------+
+-}
+faceToColor :: Face -> Color
+faceToColor Up = W
+faceToColor Down = Y
+faceToColor Front = G
+faceToColor Back = B
+faceToColor Right = R
+faceToColor Left = O
 
 {-|
   The set of all possible corners in the standard orientation:
@@ -75,28 +98,34 @@ edges = fromList [Edge W G, Edge W O, Edge W B, Edge W R,
                   Edge G O, Edge B O, Edge B R, Edge G R,
                   Edge Y G, Edge Y O, Edge Y B, Edge Y R]
 
-getFace :: Cube -> Face -> Array (Int, Int) Color
-getFace c f = array ((0, 0), (2, 2))
-                    [((i, j), fromJust $ cubieColor (embedding i j f) f)
-                     | i <- [0..2], j <- [0..2]]
-  where
-    embedding i j Up = CubieEmbed {cubie=c!(i,0,2-j), location=(i,0,2-j)}
-    embedding i j Down = CubieEmbed {cubie=c!(i,2,j), location=(i,2,j)}
-    embedding i j Front = CubieEmbed {cubie=c!(i,j,0), location=(i,j,0)}
-    embedding i j Back = CubieEmbed {cubie=c!(2-i,j,2), location=(2-i,j,2)}
-    embedding i j Right = CubieEmbed {cubie=c!(2,j,i), location=(2,j,i)}
-    embedding i j Left = CubieEmbed {cubie=c!(0,j,2-i), location=(0,j,2-i)}
+rotate :: Cubie -> Cubie
+rotate (Edge a b) = Edge b a
+rotate (Corner a b c) = Corner c a b
+rotate x = x
 
+-- |Checks if there is a face, where the two given cubies have the same colour.
+shareColor :: CubieEmbed -> CubieEmbed -> Bool
+shareColor e c = or [ cubieColor e f == cubieColor c f
+                    | f <- normalToFace <$> normals e ]
 
-cubeNet :: Cube -> String
-cubeNet c = format emptyNet $ map show colors
+-- | Compute the normal vectors that point in the direction
+-- the stickers of a given cubie are facing.
+normals :: CubieEmbed -> [(Int, Int, Int)]
+normals CubieEmbed { cubie=_, location=(x,y,z) } =
+  filter (/= (0,0,0)) [ (f x,0,0), (0,f y,0), (0,0,f z) ]
   where
-    colors = [getFace c Up ! (i, j) | j <- [0..2], i <-[0..2]]
-      ++ [getFace c Left ! (i, j) | j <- [0..2], i <-[0..2]]
-      ++ [getFace c Front ! (i, j) | j <- [0..2], i <-[0..2]]
-      ++ [getFace c Right ! (i, j) | j <- [0..2], i <-[0..2]]
-      ++ [getFace c Back ! (i, j) | j <- [0..2], i <-[0..2]]
-      ++ [getFace c Down ! (i, j) | j <- [0..2], i <-[0..2]]
+    f 0 = -1
+    f 2 =  1
+    f _ =  0
+
+normalToFace :: (Int, Int, Int) -> Face
+normalToFace (1,0,0) = Right
+normalToFace (0,1,0) = Down
+normalToFace (0,0,1) = Back
+normalToFace (-1,0,0) = Left
+normalToFace (0,-1,0) = Up
+normalToFace (0,0,-1) = Front
+normalToFace _ = error "Not a valid normal vector!"
 
 cubieColor :: CubieEmbed -> Face -> Maybe Color
 cubieColor CubieEmbed { cubie=Center c, location=(1, 0, 1) } Up = Just c
@@ -129,6 +158,28 @@ cubieColor CubieEmbed { cubie=Edge _ c, location=(0, _, _) } Left = Just c
 cubieColor CubieEmbed { cubie=Corner _ c d, location=(0, y, z) } Left =
   if y == z then Just d else Just c
 cubieColor _ Left = Nothing
+
+cubeNet :: Cube -> String
+cubeNet c = format emptyNet $ map show colors
+  where
+    colors = [getFace c Up ! (i, j) | j <- [0..2], i <-[0..2]]
+      ++ [getFace c Left ! (i, j) | j <- [0..2], i <-[0..2]]
+      ++ [getFace c Front ! (i, j) | j <- [0..2], i <-[0..2]]
+      ++ [getFace c Right ! (i, j) | j <- [0..2], i <-[0..2]]
+      ++ [getFace c Back ! (i, j) | j <- [0..2], i <-[0..2]]
+      ++ [getFace c Down ! (i, j) | j <- [0..2], i <-[0..2]]
+
+getFace :: Cube -> Face -> Array (Int, Int) Color
+getFace c f = array ((0, 0), (2, 2))
+                    [((i, j), fromJust $ cubieColor (embedding i j f) f)
+                     | i <- [0..2], j <- [0..2]]
+  where
+    embedding i j Up = CubieEmbed {cubie=c!(i,0,2-j), location=(i,0,2-j)}
+    embedding i j Down = CubieEmbed {cubie=c!(i,2,j), location=(i,2,j)}
+    embedding i j Front = CubieEmbed {cubie=c!(i,j,0), location=(i,j,0)}
+    embedding i j Back = CubieEmbed {cubie=c!(2-i,j,2), location=(2-i,j,2)}
+    embedding i j Right = CubieEmbed {cubie=c!(2,j,i), location=(2,j,i)}
+    embedding i j Left = CubieEmbed {cubie=c!(0,j,2-i), location=(0,j,2-i)}
 
 emptyNet :: String
 emptyNet = "\
