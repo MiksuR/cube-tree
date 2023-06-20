@@ -57,11 +57,10 @@ buildNode (layer, edgs, corns, n) = (layer, filter (valid layer) embedded)
     embedLayer cs = ([ CubieEmbed { cubie = c, location = cubieLocation (n+1) i }
                      | (c, i) <- zip cs [0..] ],
                      if isCorners then edgs
-                     else difference edgs (fromList $ cs ++ (rotate <$> cs)),
+                     else difference edgs (fromList . map orient $ cs),
                      if isCorners
                      then difference
-                            corns (fromList $ cs ++ (rotate <$> cs)
-                                                 ++ (rotate . rotate <$> cs))
+                            corns (fromList . map orient $ cs)
                      else corns, n+1)
 
 -- |Given a set of cubies, produce all possible rotations and permutations.

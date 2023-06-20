@@ -13,6 +13,7 @@ given cube, which can be printed in the terminal.
 module Cube where
 
 import Prelude hiding (Right, Left)
+import Control.Arrow ((&&&))
 import Data.Array.IArray
 import Data.Maybe (fromJust)
 import Data.Set (Set, fromList)
@@ -98,17 +99,47 @@ edges = fromList [Edge W G, Edge W O, Edge W B, Edge W R,
                   Edge G O, Edge B O, Edge B R, Edge G R,
                   Edge Y G, Edge Y O, Edge Y B, Edge Y R]
 
+isCorner :: Cubie -> Bool
+isCorner (Corner _ _ _) = True
+isCorner _              = False
+
+isEdge :: Cubie -> Bool
+isEdge (Edge _ _) = True
+isEdge _          = False
+
 rotate :: Cubie -> Cubie
 rotate (Edge a b) = Edge b a
 rotate (Corner a b c) = Corner c a b
 rotate x = x
+
+-- |Returns the cubie in standard orientation
+orient :: Cubie -> Cubie
+orient = uncurry ($) . ((rot . rotNum) &&& id)
+  where
+    rot = flip $ (!!) . iterate rotate
+
+-- |Return the number of time the cubie must be rotated to be oriented
+rotNum :: Cubie -> Int
+rotNum (Edge   W _  ) = 0
+rotNum (Edge   Y _  ) = 0
+rotNum (Edge   _ W  ) = 1
+rotNum (Edge   _ Y  ) = 1
+rotNum (Edge   G _  ) = 0
+rotNum (Edge   B _  ) = 0
+rotNum (Edge   _ _  ) = 1
+rotNum (Corner W _ _) = 0
+rotNum (Corner Y _ _) = 0
+rotNum (Corner _ _ W) = 1
+rotNum (Corner _ _ Y) = 1
+rotNum (Corner _ _ _) = 2
+rotNum _              = 0
 
 -- |Checks if there is a face, where the two given cubies have the same colour.
 shareColor :: CubieEmbed -> CubieEmbed -> Bool
 shareColor e c = or [ cubieColor e f == cubieColor c f
                     | f <- normalToFace <$> normals e ]
 
--- | Compute the normal vectors that point in the direction
+-- |Compute the normal vectors that point in the direction
 -- the stickers of a given cubie are facing.
 normals :: CubieEmbed -> [(Int, Int, Int)]
 normals CubieEmbed { cubie=_, location=(x,y,z) } =
@@ -162,12 +193,12 @@ cubieColor _ Left = Nothing
 cubeNet :: Cube -> String
 cubeNet c = format emptyNet $ map show colors
   where
-    colors = [getFace c Up ! (i, j) | j <- [0..2], i <-[0..2]]
-      ++ [getFace c Left ! (i, j) | j <- [0..2], i <-[0..2]]
-      ++ [getFace c Front ! (i, j) | j <- [0..2], i <-[0..2]]
-      ++ [getFace c Right ! (i, j) | j <- [0..2], i <-[0..2]]
-      ++ [getFace c Back ! (i, j) | j <- [0..2], i <-[0..2]]
-      ++ [getFace c Down ! (i, j) | j <- [0..2], i <-[0..2]]
+    colors = [getFace c Up ! (i, j)    | j <- [0..2], i <-[0..2]]
+          ++ [getFace c Left ! (i, j)  | j <- [0..2], i <-[0..2]]
+          ++ [getFace c Front ! (i, j) | j <- [0..2], i <-[0..2]]
+          ++ [getFace c Right ! (i, j) | j <- [0..2], i <-[0..2]]
+          ++ [getFace c Back ! (i, j)  | j <- [0..2], i <-[0..2]]
+          ++ [getFace c Down ! (i, j)  | j <- [0..2], i <-[0..2]]
 
 getFace :: Cube -> Face -> Array (Int, Int) Color
 getFace c f = array ((0, 0), (2, 2))
