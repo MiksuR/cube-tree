@@ -25,10 +25,9 @@ import Cube
 import Control.Monad (join)
 import Data.Maybe (fromJust)
 import Data.Tree
-import Data.Set (Set, fromList, toList, delete, foldl', difference)
+import Data.Set (Set, fromList, toList, delete, foldl', difference, empty)
 import Data.Sequence (Seq(..), (><), (<|))
 
---   LayerSeed = (layer, edges, corners, layer number)
 type LayerSeed = (Layer     -- ^ layer
                 , Set Cubie -- ^ edges
                 , Set Cubie -- ^ corners
@@ -38,6 +37,11 @@ type LayerSeed = (Layer     -- ^ layer
 cubeForest :: Forest Layer
 cubeForest = unfoldForest buildNode firstCorners
 
+cubeMiniTree :: Tree Layer
+cubeMiniTree = unfoldTree buildMiniNode ([CubieEmbed {cubie=Corner W G O,
+                                                      location=(0,0,0)}],
+                                          empty, delete (Corner W G O) corners, 0)
+
 firstCorners :: [LayerSeed]
 firstCorners = [ (embedFirst (c, r), edges, delete c corners, 0)
                | c <- toList corners, r <- [id, rotate, rotate . rotate] ]
@@ -45,6 +49,7 @@ firstCorners = [ (embedFirst (c, r), edges, delete c corners, 0)
     embedFirst (c, r) = [CubieEmbed { cubie = r c,  location = (0, 0, 0) }]
 
 buildNode :: LayerSeed -> (Layer, [LayerSeed])
+buildNode ([], _, _, _)           = ([],    [])
 buildNode (layer, edgs, corns, n) = (layer, filter (valid layer) embedded)
   where
     embedded = embedLayers $ combinations isCorners layerSize
@@ -62,6 +67,19 @@ buildNode (layer, edgs, corns, n) = (layer, filter (valid layer) embedded)
                      then difference
                             corns (fromList . map orient $ cs)
                      else corns, n+1)
+
+buildMiniNode :: LayerSeed -> (Layer, [LayerSeed])
+buildMiniNode ([], _, _, _)        = ([],    [])
+buildMiniNode (layer, _, corns, n) = (layer, filter (validMini layer) embedded)
+  where
+    embedded = embedLayers $ combinations True layerSize corns
+    layerSize = case n of 0 -> 3; 2 -> 3; 4 -> 1; _ -> 0
+    embedLayers :: Seq [Cubie] -> [LayerSeed]
+    embedLayers = foldr ((:) . embedLayer) []
+    embedLayer :: [Cubie] -> LayerSeed
+    embedLayer cs = ([ CubieEmbed { cubie = c, location = cubieLocation (n+2) i }
+                     | (c, i) <- zip cs [0..] ], empty,
+                     difference corns (fromList . map orient $ cs), n+2)
 
 -- |Given a set of cubies, produce all possible rotations and permutations.
 combinations :: Bool        -- ^ set of corners (True) or edges (False)
@@ -108,3 +126,11 @@ valid ol (nl, _, _, 5) = and $ [ not $ shareColor (nl !! i) (ol !! i) | i <- [0.
 valid ol (n:_, _, _, 6) = and [ not $ shareColor n o | o <- ol ]
 valid _ ([],_,_,n) = n > 6
 valid _ _ = error "Invalid layer seed!"
+
+validMini :: Layer -> LayerSeed -> Bool
+validMini (o:_) (nl,  _, _, 2) = and   [ not $ shareColor o n | n <- nl ]
+validMini ol    (nl,  _, _, 4) = and $ [ not $ shareColor (ol !! i) (nl !! mod (i+1) 2) | i <- [0..2] ]
+                                    ++ [ not $ shareColor (ol !! i) (nl !! mod (i-1) 2) | i <- [0..2] ]
+validMini ol    (n:_, _, _, 6) = and   [ not $ shareColor o n | o <- ol ]
+validMini _     ([],  _, _, n) = n > 6
+validMini _ _ = error "Invalid layer seed!"

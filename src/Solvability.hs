@@ -29,6 +29,10 @@ solvable :: [Cubie] -> Bool
 solvable c | length c == 20 = permutable c && orientable c
            | otherwise      = error $ show c ++ " does not define a cube!"
 
+solvableMini :: [Cubie] -> Bool
+solvableMini c | length c == 8 = (== 0) . (`mod` 3) . sum . map rotNum $ c
+               | otherwise     = error $ show c ++ " does not define a cube!"
+
 permutable :: [Cubie] -> Bool
 permutable = isEvenPermutation . toPermutationUnsafeN 20 . map ((+1) . cubieIndex)
 
