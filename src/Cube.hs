@@ -5,12 +5,24 @@ Copyright   : (c) Miksu Rankaviita, 2023
 License     : BSD-3-Clause license
 Stability   : stable
 
-The 3×3 Rubik's cube is defined as an array of cubies,
-which have defined sticker colours.
-This module contains a function for generating a net of a
-given cube, which can be printed in the terminal.
+A 3×3 Rubik's cube is built from three types of
+`Cubie`s: `Center`s, `Edge`s, and `Corner`s.
+These have defined sticker colours and orientations.
+Such `Cubie`s can be wrapped in a `CubieEmbed` type
+by specifying a location in space. Finally,
+these can be assembled to form a `Cube`.
+
+This module contains functions for manipulating `Cubie`s,
+inspecting `CubieEmbed`s, and printing out the net of a `Cube`.
 -}
-module Cube where
+module Cube (
+    Color (..), Face (..), Cubie (..), Cube, CubieEmbed (..),
+    corners, edges, cubiesToCube,
+    isEdge, isCorner,
+    rotate, orient, rotNum,
+    faceToColor, shareColor, cubieColor,
+    normals, normalToFace, cubeNet
+  ) where
 
 import Prelude hiding (Right, Left)
 import Control.Arrow ((&&&))
@@ -20,79 +32,80 @@ import Data.Set (Set, fromList)
 
 import Text.Format
 
--- |Possible colours of stickers indicated by a letter.
 data Color = W -- ^ White
            | Y -- ^ Yellow
            | G -- ^ Green
            | B -- ^ Blue
            | R -- ^ Red
            | O -- ^ Orange
-           deriving (Show, Eq, Enum, Ord)
+           deriving (Show, Eq, Ord)
 data Face = Up | Down | Front | Back | Right | Left deriving (Show)
+{-|
+  A cubie is determined by the colours of its stickers.
+  In addition, this type encodes the orientation of the cubie.
+
+  I.e. @Corner W G O@ is the white-green-orange corner in the standard orientation,
+  but @Corner O W G@ is the same corner twisted in clockwise direction.
+
+  See `corners` and `edges` for the standard orientations.
+-}
 data Cubie = Center !Color | Edge !Color !Color |
              Corner !Color !Color !Color | Inside deriving (Show, Eq, Ord)
 -- |This type allows to define a cubie outside the context of an existing cube.
 data CubieEmbed = CubieEmbed { cubie :: !Cubie,
-                               -- |The index, where the cubie is to be 'embedded' in a `Cube` object
+                               -- |The index, where the cubie is to be "embedded" in a `Cube` object
                                location :: !(Int, Int, Int)
                              } deriving (Show)
--- |`Layer`s are used in the `ConstructForest` module to build `Cube`s layer-by-layer
-type Layer = [CubieEmbed]
 {-|
-  Assuming the standard color scheme and orientation, where the white face is on top
-  and green is in the front, the origin is at the front-up-left corner.
-  The axes are oriented as follows:
+  Assuming the standard color scheme and orientation (see `faceToColor`),
+  the origin is at the front-up-left corner. The axes are oriented as follows:
 
-  ```
-  x:  Right
-  y:  Down
-  z:  Towards the back
-  ```
-
-  The orientation of the cubie is determined by the order of the colours in the type.
-  See `corners` and `edges` for the standard orientations.
+  > x:  Right
+  > y:  Down
+  > z:  Towards the back
 -}
 type Cube = Array (Int, Int, Int) Cubie
 
+-- |Builds a `Cube` from a list of 12 edges and 8 corners.
+--
+-- __Does not check the input!__
 cubiesToCube :: [CubieEmbed] -> Cube
-cubiesToCube cs = array ((0,0,0),(2,2,2)) $ fixedCubies
-                                         ++ [ (l, c)
-                                            | CubieEmbed { cubie=c, location=l } <- cs ]
+cubiesToCube cs = array ((0,0,0),(2,2,2))
+                $ fixedCubies ++ [ (l, c) | CubieEmbed { cubie=c, location=l } <- cs ]
   where
     fixedCubies = [((1,1,1),Inside), ((1,1,0),Center G), ((1,1,2),Center B), ((2,1,1),Center R),
                   ((0,1,1),Center O), ((1,0,1),Center W), ((1,2,1), Center Y)]
 
-{-|
-  Returns the colour of the center cubie of the given face:
-  +----+------+-------+------+-------+------+
-  | Up | Down | Front | Back | Right | Left |
-  +----+------+-------+------+-------+------+
-  | W  |  Y   |  G    |   B  |   R   |   O  |
-  +----+------+-------+------+-------+------+
--}
+-- | Returns the colour of the center cubie of the given face:
+--
+-- +----+------+-------+------+-------+------+
+-- | Up | Down | Front | Back | Right | Left |
+-- +----+------+-------+------+-------+------+
+-- | W  |  Y   |  G    |   B  |   R   |   O  |
+-- +----+------+-------+------+-------+------+
 faceToColor :: Face -> Color
-faceToColor Up = W
-faceToColor Down = Y
+faceToColor Up    = W
+faceToColor Down  = Y
 faceToColor Front = G
-faceToColor Back = B
+faceToColor Back  = B
 faceToColor Right = R
-faceToColor Left = O
+faceToColor Left  = O
 
 {-|
-  The set of all possible corners in the standard orientation:
+  The set of all possible `Corner`s in the standard orientation:
 
-  {Corner W G O, Corner W O B, Corner W B R, Corner W R G,
-   Corner Y O G, Corner Y B O, Corner Y R B, Corner Y G R}
+  > {Corner W G O, Corner W O B, Corner W B R, Corner W R G,
+  >  Corner Y O G, Corner Y B O, Corner Y R B, Corner Y G R}
 -}
 corners :: Set Cubie
 corners = fromList [Corner W G O, Corner W O B, Corner W B R, Corner W R G,
                     Corner Y O G, Corner Y B O, Corner Y R B, Corner Y G R]
 {-|
-  The set of all possible edges in the standard orientation:
+  The set of all possible `Edge`s in the standard orientation:
 
-  {Edge W G, Edge W O, Edge W B, Edge W R,
-   Edge G O, Edge B O, Edge B R, Edge G R,
-   Edge Y G, Edge Y O, Edge Y B, Edge Y R}
+  > {Edge W G, Edge W O, Edge W B, Edge W R,
+  >  Edge G O, Edge B O, Edge B R, Edge G R,
+  >  Edge Y G, Edge Y O, Edge Y B, Edge Y R}
 -}
 edges :: Set Cubie
 edges = fromList [Edge W G, Edge W O, Edge W B, Edge W R,
@@ -107,6 +120,7 @@ isEdge :: Cubie -> Bool
 isEdge (Edge _ _) = True
 isEdge _          = False
 
+-- |Flips an `Edge` and rotates a `Corner` clockwise
 rotate :: Cubie -> Cubie
 rotate (Edge a b) = Edge b a
 rotate (Corner a b c) = Corner c a b
@@ -114,7 +128,7 @@ rotate x = x
 
 -- |Returns the cubie in standard orientation
 orient :: Cubie -> Cubie
-orient = uncurry ($) . ((rot . rotNum) &&& id)
+orient = uncurry ($) . (rot . rotNum &&& id)
   where
     rot = flip $ (!!) . iterate rotate
 
@@ -203,7 +217,7 @@ cubeNet c = format emptyNet $ map show colors
 getFace :: Cube -> Face -> Array (Int, Int) Color
 getFace c f = array ((0, 0), (2, 2))
                     [((i, j), fromJust $ cubieColor (embedding i j f) f)
-                     | i <- [0..2], j <- [0..2]]
+                    | i <- [0..2], j <- [0..2]]
   where
     embedding i j Up = CubieEmbed {cubie=c!(i,0,2-j), location=(i,0,2-j)}
     embedding i j Down = CubieEmbed {cubie=c!(i,2,j), location=(i,2,j)}

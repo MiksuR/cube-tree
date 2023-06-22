@@ -4,31 +4,36 @@ Description : Checks if a cube is solvable
 Copyright   : (c) Miksu Rankaviita, 2023
 License     : BSD-3-Clause license
 Stability   : stable
+
+Not all configurations of a cube can be solved.
+This module provides functions for checking when
+a cube can be solved.
 -}
 
-module Solvability where
+module Solvability (solvable, solvableMini) where
 
 import Cube
 
 import Math.Combinat.Permutations
 
--- |Check if a cube can be solved.
+-- |This function assumes that the list is ordered correctly.
+-- Below is the order in which the `Cubie`s are assumed to appear.
 --
--- This can be checked simply by computing the parities of
--- the permutation solving the cube, and is thus
--- not too inefficient.
+-- > (0,0,0), (1,0,0), (0,1,0), (0,0,1), (2,0,0), (0,2,0), (0,0,2),
+-- > (2,1,0), (2,0,1), (0,2,1), (1,2,0), (1,0,2), (0,1,2),
+-- > (0,2,2), (2,0,2), (2,2,0), (1,2,2), (2,1,2), (2,2,1), (2,2,2)
 --
--- The function assumes that the list is ordered correctly.
--- Below is the order in which the cubies are assumed to appear.
--- ```
--- (0,0,0), (1,0,0), (0,1,0), (0,0,1), (2,0,0), (0,2,0), (0,0,2),
--- (2,1,0), (2,0,1), (0,2,1), (1,2,0), (1,0,2), (0,1,2),
--- (0,2,2), (2,0,2), (2,2,0), (1,2,2), (2,1,2), (2,2,1), (2,2,2)
--- ```
+-- This is the order in which the `Cubie`s appear,
+-- if they are obtained by folding the `cubeTree`.
+--
+-- Note: solvability can be checked simply by computing
+-- the parities of the permutation solving the cube,
+-- and is thus not too inefficient.
 solvable :: [Cubie] -> Bool
 solvable c | length c == 20 = permutable c && orientable c
            | otherwise      = error $ show c ++ " does not define a cube!"
 
+-- |This is an analogous function for the 2×2 cube.
 solvableMini :: [Cubie] -> Bool
 solvableMini c | length c == 8 = (== 0) . (`mod` 3) . sum . map rotNum $ c
                | otherwise     = error $ show c ++ " does not define a cube!"
@@ -43,7 +48,7 @@ orientable c = (even              . sum . map rotNum $ edgs)
     edgs = filter isEdge c
     cors = filter isCorner c
 
--- Returns the index of the `Cubie` in the solved position.
+-- |Returns the index of the `Cubie` in the solved position.
 cubieIndex :: Cubie -> Int
 cubieIndex (Corner W G O) = 0
 cubieIndex (Edge   W G  ) = 1

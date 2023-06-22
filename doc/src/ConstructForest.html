@@ -5,63 +5,94 @@ Copyright   : (c) Miksu Rankaviita, 2023
 License     : BSD-3-Clause license
 Stability   : stable
 
-The `cubeForest` function constructs a forest in the following manner:
+The `cubeForest` is constructed in the following manner:
 
   1. Start with a list of corners all embedded at the origin.
   2. Let each corner be a root of a tree.
   3. For a given corner, pick three edges and embed them in the three spots adjacent to the origin
      in such a way that no two adjacent stickers have the same colour.
-  4. Take such a triplet of edges to be a leaf of the corresponding tree.
-  5. Continue this contstruction iteratively: For each leaf, construct a leaf by choosing a set of adjacent
-     pieces, in such a way that no two adjacent stickers have the same colour.
+  4. Take such a triplet of edges to be a child of the root node.
+  5. Continue this construction inductively: For each leaf, construct a child node
+     by choosing a set of adjacent pieces, in such a way that
+     no two adjacent stickers have the same colour.
 
-The leaves in such forest define all the cubes with the property
+The leaves on level 5 in the forest define all the cubes with the property
 that no two adjacent stickers have the same colour.
 -}</span><span>
-</span><span id="line-21"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">ConstructForest</span><span> </span><span class="hs-keyword">where</span><span>
-</span><span id="line-22"></span><span>
-</span><span id="line-23"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Cube.html"><span class="hs-identifier">Cube</span></a></span><span>
-</span><span id="line-24"></span><span>
-</span><span id="line-25"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">join</span></span><span class="hs-special">)</span><span>
-</span><span id="line-26"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.List</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">permutations</span></span><span class="hs-special">)</span><span>
-</span><span id="line-27"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Tree</span></span><span>
-</span><span id="line-28"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Set</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Set</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">fromList</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">toList</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">delete</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">foldl'</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">difference</span></span><span class="hs-special">)</span><span>
-</span><span id="line-29"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Sequence</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Seq</span></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-operator">(&gt;&lt;)</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-operator">(&lt;|)</span></span><span class="hs-special">)</span><span>
-</span><span id="line-30"></span><span>
-</span><span id="line-31"></span><span class="hs-comment">--   LayerSeed = (layer, edges, corners, layer number)</span><span>
-</span><span id="line-32"></span><span class="hs-keyword">type</span><span> </span><span id="LayerSeed"><span class="annot"><a href="ConstructForest.html#LayerSeed"><span class="hs-identifier hs-var">LayerSeed</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Cube.html#Layer"><span class="hs-identifier hs-type">Layer</span></a></span><span>     </span><span class="hs-comment">-- ^ layer</span><span>
-</span><span id="line-33"></span><span>                </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Set</span></span><span> </span><span class="annot"><a href="Cube.html#Cubie"><span class="hs-identifier hs-type">Cubie</span></a></span><span> </span><span class="hs-comment">-- ^ edges</span><span>
-</span><span id="line-34"></span><span>                </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Set</span></span><span> </span><span class="annot"><a href="Cube.html#Cubie"><span class="hs-identifier hs-type">Cubie</span></a></span><span> </span><span class="hs-comment">-- ^ corners</span><span>
-</span><span id="line-35"></span><span>                </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>       </span><span class="hs-comment">-- ^ layer number</span><span>
-</span><span id="line-36"></span><span>                 </span><span class="hs-special">)</span><span>
-</span><span id="line-37"></span><span>
-</span><span id="line-38"></span><span class="annot"><a href="ConstructForest.html#cubeForest"><span class="hs-identifier hs-type">cubeForest</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Forest</span></span><span> </span><span class="annot"><a href="Cube.html#Layer"><span class="hs-identifier hs-type">Layer</span></a></span><span>
-</span><span id="line-39"></span><span id="cubeForest"><span class="annot"><span class="annottext">cubeForest :: Forest Layer
+</span><span id="line-22"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">ConstructForest</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="ConstructForest.html#Layer"><span class="hs-identifier">Layer</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="ConstructForest.html#cubeForest"><span class="hs-identifier">cubeForest</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="ConstructForest.html#cubeMiniTree"><span class="hs-identifier">cubeMiniTree</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-23"></span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Cube.html"><span class="hs-identifier">Cube</span></a></span><span>
+</span><span id="line-25"></span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">join</span></span><span class="hs-special">)</span><span>
+</span><span id="line-27"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">fromJust</span></span><span class="hs-special">)</span><span>
+</span><span id="line-28"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Tree</span></span><span>
+</span><span id="line-29"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Set</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Set</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">fromList</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">toList</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">delete</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">foldl'</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">difference</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">empty</span></span><span class="hs-special">)</span><span>
+</span><span id="line-30"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Sequence</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Seq</span></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-operator">(&gt;&lt;)</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-operator">(&lt;|)</span></span><span class="hs-special">)</span><span>
+</span><span id="line-31"></span><span>
+</span><span id="line-32"></span><span class="hs-keyword">type</span><span> </span><span id="Layer"><span class="annot"><a href="ConstructForest.html#Layer"><span class="hs-identifier hs-var">Layer</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Cube.html#CubieEmbed"><span class="hs-identifier hs-type">CubieEmbed</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-33"></span><span class="hs-keyword">type</span><span> </span><span id="LayerSeed"><span class="annot"><a href="ConstructForest.html#LayerSeed"><span class="hs-identifier hs-var">LayerSeed</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="ConstructForest.html#Layer"><span class="hs-identifier hs-type">Layer</span></a></span><span>     </span><span class="hs-comment">-- ^ layer</span><span>
+</span><span id="line-34"></span><span>                </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Set</span></span><span> </span><span class="annot"><a href="Cube.html#Cubie"><span class="hs-identifier hs-type">Cubie</span></a></span><span> </span><span class="hs-comment">-- ^ edges</span><span>
+</span><span id="line-35"></span><span>                </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Set</span></span><span> </span><span class="annot"><a href="Cube.html#Cubie"><span class="hs-identifier hs-type">Cubie</span></a></span><span> </span><span class="hs-comment">-- ^ corners</span><span>
+</span><span id="line-36"></span><span>                </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>       </span><span class="hs-comment">-- ^ layer number</span><span>
+</span><span id="line-37"></span><span>                 </span><span class="hs-special">)</span><span>
+</span><span id="line-38"></span><span>
+</span><span id="line-39"></span><span class="annot"><a href="ConstructForest.html#cubeForest"><span class="hs-identifier hs-type">cubeForest</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Forest</span></span><span> </span><span class="annot"><a href="ConstructForest.html#Layer"><span class="hs-identifier hs-type">Layer</span></a></span><span>
+</span><span id="line-40"></span><span id="cubeForest"><span class="annot"><span class="annottext">cubeForest :: Forest Layer
 </span><a href="ConstructForest.html#cubeForest"><span class="hs-identifier hs-var hs-var">cubeForest</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(LayerSeed -&gt; (Layer, [LayerSeed])) -&gt; [LayerSeed] -&gt; Forest Layer
 forall b a. (b -&gt; (a, [b])) -&gt; [b] -&gt; [Tree a]
 </span><span class="hs-identifier hs-var">unfoldForest</span></span><span> </span><span class="annot"><span class="annottext">LayerSeed -&gt; (Layer, [LayerSeed])
 </span><a href="ConstructForest.html#buildNode"><span class="hs-identifier hs-var">buildNode</span></a></span><span> </span><span class="annot"><span class="annottext">[LayerSeed]
 </span><a href="ConstructForest.html#firstCorners"><span class="hs-identifier hs-var">firstCorners</span></a></span><span>
-</span><span id="line-40"></span><span>
-</span><span id="line-41"></span><span class="annot"><a href="ConstructForest.html#firstCorners"><span class="hs-identifier hs-type">firstCorners</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="ConstructForest.html#LayerSeed"><span class="hs-identifier hs-type">LayerSeed</span></a></span><span class="hs-special">]</span><span>
-</span><span id="line-42"></span><span id="firstCorners"><span class="annot"><span class="annottext">firstCorners :: [LayerSeed]
+</span><span id="line-41"></span><span>
+</span><span id="line-42"></span><span class="hs-comment">-- |This is an analogous object for the 2&#215;2 cube.</span><span>
+</span><span id="line-43"></span><span class="annot"><a href="ConstructForest.html#cubeMiniTree"><span class="hs-identifier hs-type">cubeMiniTree</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Tree</span></span><span> </span><span class="annot"><a href="ConstructForest.html#Layer"><span class="hs-identifier hs-type">Layer</span></a></span><span>
+</span><span id="line-44"></span><span id="cubeMiniTree"><span class="annot"><span class="annottext">cubeMiniTree :: Tree Layer
+</span><a href="ConstructForest.html#cubeMiniTree"><span class="hs-identifier hs-var hs-var">cubeMiniTree</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(LayerSeed -&gt; (Layer, [LayerSeed])) -&gt; LayerSeed -&gt; Tree Layer
+forall b a. (b -&gt; (a, [b])) -&gt; b -&gt; Tree a
+</span><span class="hs-identifier hs-var">unfoldTree</span></span><span> </span><span class="annot"><span class="annottext">LayerSeed -&gt; (Layer, [LayerSeed])
+</span><a href="ConstructForest.html#buildMiniNode"><span class="hs-identifier hs-var">buildMiniNode</span></a></span><span>
+</span><span id="line-45"></span><span>                          </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="annot"><span class="annottext">CubieEmbed :: Cubie -&gt; (Int, Int, Int) -&gt; CubieEmbed
+</span><a href="Cube.html#CubieEmbed"><span class="hs-identifier hs-type">CubieEmbed</span></a></span><span> </span><span class="hs-special">{</span><span class="annot"><span class="annottext">cubie :: Cubie
+</span><a href="Cube.html#cubie"><span class="hs-identifier hs-var">cubie</span></a></span><span class="hs-glyph">=</span><span class="annot"><span class="annottext">Color -&gt; Color -&gt; Color -&gt; Cubie
+</span><a href="Cube.html#Corner"><span class="hs-identifier hs-var">Corner</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#W"><span class="hs-identifier hs-var">W</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#G"><span class="hs-identifier hs-var">G</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#O"><span class="hs-identifier hs-var">O</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">location :: (Int, Int, Int)
+</span><a href="Cube.html#location"><span class="hs-identifier hs-var">location</span></a></span><span class="hs-glyph">=</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">)</span><span class="hs-special">}</span><span class="hs-special">]</span><span class="hs-special">,</span><span>
+</span><span id="line-46"></span><span>                           </span><span class="annot"><span class="annottext">Set Cubie
+forall a. Set a
+</span><span class="hs-identifier hs-var">empty</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Cubie -&gt; Set Cubie -&gt; Set Cubie
+forall a. Ord a =&gt; a -&gt; Set a -&gt; Set a
+</span><span class="hs-identifier hs-var">delete</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Color -&gt; Color -&gt; Color -&gt; Cubie
+</span><a href="Cube.html#Corner"><span class="hs-identifier hs-var">Corner</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#W"><span class="hs-identifier hs-var">W</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#G"><span class="hs-identifier hs-var">G</span></a></span><span> </span><span class="annot"><span class="annottext">Color
+</span><a href="Cube.html#O"><span class="hs-identifier hs-var">O</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Set Cubie
+</span><a href="Cube.html#corners"><span class="hs-identifier hs-var">corners</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">)</span><span>
+</span><span id="line-47"></span><span>
+</span><span id="line-48"></span><span class="annot"><a href="ConstructForest.html#firstCorners"><span class="hs-identifier hs-type">firstCorners</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="ConstructForest.html#LayerSeed"><span class="hs-identifier hs-type">LayerSeed</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-49"></span><span id="firstCorners"><span class="annot"><span class="annottext">firstCorners :: [LayerSeed]
 </span><a href="ConstructForest.html#firstCorners"><span class="hs-identifier hs-var hs-var">firstCorners</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Cubie, Cubie -&gt; Cubie) -&gt; Layer
 forall {t}. (t, t -&gt; Cubie) -&gt; Layer
-</span><a href="#local-6989586621679033385"><span class="hs-identifier hs-var">embedFirst</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Cubie
-</span><a href="#local-6989586621679033384"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Cubie -&gt; Cubie
-</span><a href="#local-6989586621679033383"><span class="hs-identifier hs-var">r</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Set Cubie
+</span><a href="#local-6989586621679036248"><span class="hs-identifier hs-var">embedFirst</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Cubie
+</span><a href="#local-6989586621679036247"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Cubie -&gt; Cubie
+</span><a href="#local-6989586621679036246"><span class="hs-identifier hs-var">r</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Set Cubie
 </span><a href="Cube.html#edges"><span class="hs-identifier hs-var">edges</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Cubie -&gt; Set Cubie -&gt; Set Cubie
 forall a. Ord a =&gt; a -&gt; Set a -&gt; Set a
 </span><span class="hs-identifier hs-var">delete</span></span><span> </span><span class="annot"><span class="annottext">Cubie
-</span><a href="#local-6989586621679033384"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Set Cubie
+</span><a href="#local-6989586621679036247"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Set Cubie
 </span><a href="Cube.html#corners"><span class="hs-identifier hs-var">corners</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
 </span><span class="hs-number">0</span></span><span class="hs-special">)</span><span>
-</span><span id="line-43"></span><span>               </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679033384"><span class="annot"><span class="annottext">Cubie
-</span><a href="#local-6989586621679033384"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Set Cubie -&gt; [Cubie]
+</span><span id="line-50"></span><span>               </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679036247"><span class="annot"><span class="annottext">Cubie
+</span><a href="#local-6989586621679036247"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Set Cubie -&gt; [Cubie]
 forall a. Set a -&gt; [a]
 </span><span class="hs-identifier hs-var">toList</span></span><span> </span><span class="annot"><span class="annottext">Set Cubie
-</span><a href="Cube.html#corners"><span class="hs-identifier hs-var">corners</span></a></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679033383"><span class="annot"><span class="annottext">Cubie -&gt; Cubie
-</span><a href="#local-6989586621679033383"><span class="hs-identifier hs-var">r</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Cubie -&gt; Cubie
+</span><a href="Cube.html#corners"><span class="hs-identifier hs-var">corners</span></a></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679036246"><span class="annot"><span class="annottext">Cubie -&gt; Cubie
+</span><a href="#local-6989586621679036246"><span class="hs-identifier hs-var">r</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Cubie -&gt; Cubie
 forall a. a -&gt; a
 </span><span class="hs-identifier hs-var">id</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Cubie -&gt; Cubie
 </span><a href="Cube.html#rotate"><span class="hs-identifier hs-var">rotate</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Cubie -&gt; Cubie
@@ -69,66 +100,69 @@ forall a. a -&gt; a
 forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
 </span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Cubie -&gt; Cubie
 </span><a href="Cube.html#rotate"><span class="hs-identifier hs-var">rotate</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-special">]</span><span>
-</span><span id="line-44"></span><span>  </span><span class="hs-keyword">where</span><span>
-</span><span id="line-45"></span><span>    </span><span id="local-6989586621679033385"><span class="annot"><span class="annottext">embedFirst :: (t, t -&gt; Cubie) -&gt; Layer
-</span><a href="#local-6989586621679033385"><span class="hs-identifier hs-var hs-var">embedFirst</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679033377"><span class="annot"><span class="annottext">t
-</span><a href="#local-6989586621679033377"><span class="hs-identifier hs-var">c</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679033376"><span class="annot"><span class="annottext">t -&gt; Cubie
-</span><a href="#local-6989586621679033376"><span class="hs-identifier hs-var">r</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">CubieEmbed :: Cubie -&gt; (Int, Int, Int) -&gt; CubieEmbed
+</span><span id="line-51"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-52"></span><span>    </span><span id="local-6989586621679036248"><span class="annot"><span class="annottext">embedFirst :: (t, t -&gt; Cubie) -&gt; Layer
+</span><a href="#local-6989586621679036248"><span class="hs-identifier hs-var hs-var">embedFirst</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679036241"><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679036241"><span class="hs-identifier hs-var">c</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679036240"><span class="annot"><span class="annottext">t -&gt; Cubie
+</span><a href="#local-6989586621679036240"><span class="hs-identifier hs-var">r</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">CubieEmbed :: Cubie -&gt; (Int, Int, Int) -&gt; CubieEmbed
 </span><a href="Cube.html#CubieEmbed"><span class="hs-identifier hs-type">CubieEmbed</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">cubie :: Cubie
 </span><a href="Cube.html#cubie"><span class="hs-identifier hs-var">cubie</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">t -&gt; Cubie
-</span><a href="#local-6989586621679033376"><span class="hs-identifier hs-var">r</span></a></span><span> </span><span class="annot"><span class="annottext">t
-</span><a href="#local-6989586621679033377"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">,</span><span>  </span><span class="annot"><span class="annottext">location :: (Int, Int, Int)
+</span><a href="#local-6989586621679036240"><span class="hs-identifier hs-var">r</span></a></span><span> </span><span class="annot"><span class="annottext">t
+</span><a href="#local-6989586621679036241"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">,</span><span>  </span><span class="annot"><span class="annottext">location :: (Int, Int, Int)
 </span><a href="Cube.html#location"><span class="hs-identifier hs-var">location</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
 </span><span class="hs-number">0</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
 </span><span class="hs-number">0</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
 </span><span class="hs-number">0</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">}</span><span class="hs-special">]</span><span>
-</span><span id="line-46"></span><span>
-</span><span id="line-47"></span><span class="annot"><a href="ConstructForest.html#buildNode"><span class="hs-identifier hs-type">buildNode</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="ConstructForest.html#LayerSeed"><span class="hs-identifier hs-type">LayerSeed</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Cube.html#Layer"><span class="hs-identifier hs-type">Layer</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="ConstructForest.html#LayerSeed"><span class="hs-identifier hs-type">LayerSeed</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
-</span><span id="line-48"></span><span id="buildNode"><span class="annot"><span class="annottext">buildNode :: LayerSeed -&gt; (Layer, [LayerSeed])
-</span><a href="ConstructForest.html#buildNode"><span class="hs-identifier hs-var hs-var">buildNode</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679033372"><span class="annot"><span class="annottext">Layer
-</span><a href="#local-6989586621679033372"><span class="hs-identifier hs-var">layer</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679033371"><span class="annot"><span class="annottext">Set Cubie
-</span><a href="#local-6989586621679033371"><span class="hs-identifier hs-var">edgs</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679033370"><span class="annot"><span class="annottext">Set Cubie
-</span><a href="#local-6989586621679033370"><span class="hs-identifier hs-var">corns</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679033369"><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033369"><span class="hs-identifier hs-var">n</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Layer
-</span><a href="#local-6989586621679033372"><span class="hs-identifier hs-var">layer</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">(LayerSeed -&gt; Bool) -&gt; [LayerSeed] -&gt; [LayerSeed]
+</span><span id="line-53"></span><span>
+</span><span id="line-54"></span><span class="annot"><a href="ConstructForest.html#buildNode"><span class="hs-identifier hs-type">buildNode</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="ConstructForest.html#LayerSeed"><span class="hs-identifier hs-type">LayerSeed</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="ConstructForest.html#Layer"><span class="hs-identifier hs-type">Layer</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="ConstructForest.html#LayerSeed"><span class="hs-identifier hs-type">LayerSeed</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-55"></span><span id="buildNode"><span class="annot"><span class="annottext">buildNode :: LayerSeed -&gt; (Layer, [LayerSeed])
+</span><a href="ConstructForest.html#buildNode"><span class="hs-identifier hs-var hs-var">buildNode</span></a></span></span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Set Cubie
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Set Cubie
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span>           </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">,</span><span>    </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-56"></span><span class="annot"><a href="ConstructForest.html#buildNode"><span class="hs-identifier hs-var">buildNode</span></a></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679036239"><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036239"><span class="hs-identifier hs-var">layer</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679036238"><span class="annot"><span class="annottext">Set Cubie
+</span><a href="#local-6989586621679036238"><span class="hs-identifier hs-var">edgs</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679036237"><span class="annot"><span class="annottext">Set Cubie
+</span><a href="#local-6989586621679036237"><span class="hs-identifier hs-var">corns</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679036236"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036236"><span class="hs-identifier hs-var">n</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036239"><span class="hs-identifier hs-var">layer</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">(LayerSeed -&gt; Bool) -&gt; [LayerSeed] -&gt; [LayerSeed]
 forall a. (a -&gt; Bool) -&gt; [a] -&gt; [a]
 </span><span class="hs-identifier hs-var">filter</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Layer -&gt; LayerSeed -&gt; Bool
 </span><a href="ConstructForest.html#valid"><span class="hs-identifier hs-var">valid</span></a></span><span> </span><span class="annot"><span class="annottext">Layer
-</span><a href="#local-6989586621679033372"><span class="hs-identifier hs-var">layer</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[LayerSeed]
-</span><a href="#local-6989586621679033367"><span class="hs-identifier hs-var">embedded</span></a></span><span class="hs-special">)</span><span>
-</span><span id="line-49"></span><span>  </span><span class="hs-keyword">where</span><span>
-</span><span id="line-50"></span><span>    </span><span id="local-6989586621679033367"><span class="annot"><span class="annottext">embedded :: [LayerSeed]
-</span><a href="#local-6989586621679033367"><span class="hs-identifier hs-var hs-var">embedded</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Seq [Cubie] -&gt; [LayerSeed]
-</span><a href="#local-6989586621679033364"><span class="hs-identifier hs-var">embedLayers</span></a></span><span> </span><span class="annot"><span class="annottext">(Seq [Cubie] -&gt; [LayerSeed])
--&gt; (Set Cubie -&gt; Seq [Cubie]) -&gt; Set Cubie -&gt; [LayerSeed]
-forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
-</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Int -&gt; Set Cubie -&gt; Seq [Cubie]
+</span><a href="#local-6989586621679036239"><span class="hs-identifier hs-var">layer</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[LayerSeed]
+</span><a href="#local-6989586621679036234"><span class="hs-identifier hs-var">embedded</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-57"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-58"></span><span>    </span><span id="local-6989586621679036234"><span class="annot"><span class="annottext">embedded :: [LayerSeed]
+</span><a href="#local-6989586621679036234"><span class="hs-identifier hs-var hs-var">embedded</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Seq [Cubie] -&gt; [LayerSeed]
+</span><a href="#local-6989586621679036233"><span class="hs-identifier hs-var">embedLayers</span></a></span><span> </span><span class="annot"><span class="annottext">(Seq [Cubie] -&gt; [LayerSeed]) -&gt; Seq [Cubie] -&gt; [LayerSeed]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Int -&gt; Set Cubie -&gt; Seq [Cubie]
 </span><a href="ConstructForest.html#combinations"><span class="hs-identifier hs-var">combinations</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
-</span><a href="#local-6989586621679033361"><span class="hs-identifier hs-var">isCorners</span></a></span><span> </span><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033360"><span class="hs-identifier hs-var">layerSize</span></a></span><span>
-</span><span id="line-51"></span><span>                            </span><span class="annot"><span class="annottext">(Set Cubie -&gt; [LayerSeed]) -&gt; Set Cubie -&gt; [LayerSeed]
+</span><a href="#local-6989586621679036231"><span class="hs-identifier hs-var">isCorners</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036230"><span class="hs-identifier hs-var">layerSize</span></a></span><span>
+</span><span id="line-59"></span><span>                           </span><span class="annot"><span class="annottext">(Set Cubie -&gt; Seq [Cubie]) -&gt; Set Cubie -&gt; Seq [Cubie]
 forall a b. (a -&gt; b) -&gt; a -&gt; b
 </span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Bool
-</span><a href="#local-6989586621679033361"><span class="hs-identifier hs-var">isCorners</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Set Cubie
-</span><a href="#local-6989586621679033370"><span class="hs-identifier hs-var">corns</span></a></span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Set Cubie
-</span><a href="#local-6989586621679033371"><span class="hs-identifier hs-var">edgs</span></a></span><span>
-</span><span id="line-52"></span><span>    </span><span id="local-6989586621679033361"><span class="annot"><span class="annottext">isCorners :: Bool
-</span><a href="#local-6989586621679033361"><span class="hs-identifier hs-var hs-var">isCorners</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Bool
+</span><a href="#local-6989586621679036231"><span class="hs-identifier hs-var">isCorners</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Set Cubie
+</span><a href="#local-6989586621679036237"><span class="hs-identifier hs-var">corns</span></a></span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Set Cubie
+</span><a href="#local-6989586621679036238"><span class="hs-identifier hs-var">edgs</span></a></span><span>
+</span><span id="line-60"></span><span>    </span><span id="local-6989586621679036231"><span class="annot"><span class="annottext">isCorners :: Bool
+</span><a href="#local-6989586621679036231"><span class="hs-identifier hs-var hs-var">isCorners</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Bool
 forall a. Integral a =&gt; a -&gt; Bool
-</span><span class="hs-identifier hs-var">even</span></span><span> </span><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033369"><span class="hs-identifier hs-var">n</span></a></span><span>
-</span><span id="line-53"></span><span>    </span><span id="local-6989586621679033360"><span class="annot"><span class="annottext">layerSize :: Int
-</span><a href="#local-6989586621679033360"><span class="hs-identifier hs-var hs-var">layerSize</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Bool
-</span><a href="#local-6989586621679033361"><span class="hs-identifier hs-var">isCorners</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier hs-var">odd</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036236"><span class="hs-identifier hs-var">n</span></a></span><span>
+</span><span id="line-61"></span><span>    </span><span id="local-6989586621679036230"><span class="annot"><span class="annottext">layerSize :: Int
+</span><a href="#local-6989586621679036230"><span class="hs-identifier hs-var hs-var">layerSize</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679036231"><span class="hs-identifier hs-var">isCorners</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Int
 </span><span class="hs-number">4</span></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
 forall a. Num a =&gt; a -&gt; a -&gt; a
 </span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Int -&gt; Int
 forall a. Num a =&gt; a -&gt; a
 </span><span class="hs-identifier hs-var">abs</span></span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033369"><span class="hs-identifier hs-var">n</span></a></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+</span><a href="#local-6989586621679036236"><span class="hs-identifier hs-var">n</span></a></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
 forall a. Num a =&gt; a -&gt; a -&gt; a
 </span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Int
-</span><span class="hs-number">3</span></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Int
 </span><span class="hs-number">6</span></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
 forall a. Num a =&gt; a -&gt; a -&gt; a
 </span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Int -&gt; Int
@@ -137,16 +171,16 @@ forall a. Num a =&gt; a -&gt; a
 </span><span class="hs-number">3</span></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
 forall a. Num a =&gt; a -&gt; a -&gt; a
 </span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033369"><span class="hs-identifier hs-var">n</span></a></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+</span><a href="#local-6989586621679036236"><span class="hs-identifier hs-var">n</span></a></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
 forall a. Num a =&gt; a -&gt; a -&gt; a
 </span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Int
-</span><span class="hs-number">9</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+</span><span class="hs-number">6</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
 forall a. Integral a =&gt; a -&gt; a -&gt; a
 </span><span class="hs-operator hs-var">`div`</span></span><span> </span><span class="annot"><span class="annottext">Int
 </span><span class="hs-number">2</span></span><span class="hs-special">)</span><span>
-</span><span id="line-54"></span><span>    </span><span class="annot"><a href="#local-6989586621679033364"><span class="hs-identifier hs-type">embedLayers</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Seq</span></span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Cube.html#Cubie"><span class="hs-identifier hs-type">Cubie</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="ConstructForest.html#LayerSeed"><span class="hs-identifier hs-type">LayerSeed</span></a></span><span class="hs-special">]</span><span>
-</span><span id="line-55"></span><span>    </span><span id="local-6989586621679033364"><span class="annot"><span class="annottext">embedLayers :: Seq [Cubie] -&gt; [LayerSeed]
-</span><a href="#local-6989586621679033364"><span class="hs-identifier hs-var hs-var">embedLayers</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">([Cubie] -&gt; [LayerSeed] -&gt; [LayerSeed])
+</span><span id="line-62"></span><span>    </span><span class="annot"><a href="#local-6989586621679036233"><span class="hs-identifier hs-type">embedLayers</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Seq</span></span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Cube.html#Cubie"><span class="hs-identifier hs-type">Cubie</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="ConstructForest.html#LayerSeed"><span class="hs-identifier hs-type">LayerSeed</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-63"></span><span>    </span><span id="local-6989586621679036233"><span class="annot"><span class="annottext">embedLayers :: Seq [Cubie] -&gt; [LayerSeed]
+</span><a href="#local-6989586621679036233"><span class="hs-identifier hs-var hs-var">embedLayers</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">([Cubie] -&gt; [LayerSeed] -&gt; [LayerSeed])
 -&gt; [LayerSeed] -&gt; Seq [Cubie] -&gt; [LayerSeed]
 forall (t :: * -&gt; *) a b.
 Foldable t =&gt;
@@ -155,59 +189,166 @@ Foldable t =&gt;
 -&gt; ([Cubie] -&gt; LayerSeed) -&gt; [Cubie] -&gt; [LayerSeed] -&gt; [LayerSeed]
 forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
 </span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[Cubie] -&gt; LayerSeed
-</span><a href="#local-6989586621679033338"><span class="hs-identifier hs-var">embedLayer</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
-</span><span id="line-56"></span><span>    </span><span id="local-6989586621679033338"><span class="annot"><span class="annottext">embedLayer :: [Cubie] -&gt; LayerSeed
-</span><a href="#local-6989586621679033338"><span class="hs-identifier hs-var hs-var">embedLayer</span></a></span></span><span> </span><span id="local-6989586621679033326"><span class="annot"><span class="annottext">[Cubie]
-</span><a href="#local-6989586621679033326"><span class="hs-identifier hs-var">cs</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">CubieEmbed :: Cubie -&gt; (Int, Int, Int) -&gt; CubieEmbed
+</span><a href="#local-6989586621679036209"><span class="hs-identifier hs-var">embedLayer</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-64"></span><span>    </span><span class="annot"><a href="#local-6989586621679036209"><span class="hs-identifier hs-type">embedLayer</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Cube.html#Cubie"><span class="hs-identifier hs-type">Cubie</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="ConstructForest.html#LayerSeed"><span class="hs-identifier hs-type">LayerSeed</span></a></span><span>
+</span><span id="line-65"></span><span>    </span><span id="local-6989586621679036209"><span class="annot"><span class="annottext">embedLayer :: [Cubie] -&gt; LayerSeed
+</span><a href="#local-6989586621679036209"><span class="hs-identifier hs-var hs-var">embedLayer</span></a></span></span><span> </span><span id="local-6989586621679036208"><span class="annot"><span class="annottext">[Cubie]
+</span><a href="#local-6989586621679036208"><span class="hs-identifier hs-var">cs</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-66"></span><span>      </span><span class="hs-special">(</span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">CubieEmbed :: Cubie -&gt; (Int, Int, Int) -&gt; CubieEmbed
 </span><a href="Cube.html#CubieEmbed"><span class="hs-identifier hs-type">CubieEmbed</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">cubie :: Cubie
 </span><a href="Cube.html#cubie"><span class="hs-identifier hs-var">cubie</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Cubie
-</span><a href="#local-6989586621679033325"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">location :: (Int, Int, Int)
+</span><a href="#local-6989586621679036207"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">location :: (Int, Int, Int)
 </span><a href="Cube.html#location"><span class="hs-identifier hs-var">location</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; (Int, Int, Int)
-</span><a href="ConstructForest.html#cubieLocation"><span class="hs-identifier hs-var">cubieLocation</span></a></span><span> </span><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033369"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033323"><span class="hs-identifier hs-var">i</span></a></span><span> </span><span class="hs-special">}</span><span>
-</span><span id="line-57"></span><span>                     </span><span class="hs-glyph">|</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679033325"><span class="annot"><span class="annottext">Cubie
-</span><a href="#local-6989586621679033325"><span class="hs-identifier hs-var">c</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679033323"><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033323"><span class="hs-identifier hs-var">i</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[Cubie] -&gt; [Int] -&gt; [(Cubie, Int)]
+</span><a href="ConstructForest.html#cubieLocation"><span class="hs-identifier hs-var">cubieLocation</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036236"><span class="hs-identifier hs-var">n</span></a></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036204"><span class="hs-identifier hs-var">i</span></a></span><span> </span><span class="hs-special">}</span><span> </span><span class="hs-glyph">|</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679036207"><span class="annot"><span class="annottext">Cubie
+</span><a href="#local-6989586621679036207"><span class="hs-identifier hs-var">c</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679036204"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036204"><span class="hs-identifier hs-var">i</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[Cubie] -&gt; [Int] -&gt; [(Cubie, Int)]
 forall a b. [a] -&gt; [b] -&gt; [(a, b)]
 </span><span class="hs-identifier hs-var">zip</span></span><span> </span><span class="annot"><span class="annottext">[Cubie]
-</span><a href="#local-6989586621679033326"><span class="hs-identifier hs-var">cs</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036208"><span class="hs-identifier hs-var">cs</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
 </span><span class="hs-number">0</span></span><span class="hs-glyph">..</span><span class="hs-special">]</span><span> </span><span class="hs-special">]</span><span class="hs-special">,</span><span>
-</span><span id="line-58"></span><span>                     </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Bool
-forall a. Integral a =&gt; a -&gt; Bool
-</span><span class="hs-identifier hs-var">even</span></span><span> </span><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033369"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Set Cubie
-</span><a href="#local-6989586621679033371"><span class="hs-identifier hs-var">edgs</span></a></span><span>
-</span><span id="line-59"></span><span>                     </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Set Cubie -&gt; Set Cubie -&gt; Set Cubie
+</span><span id="line-67"></span><span>       </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679036231"><span class="hs-identifier hs-var">isCorners</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Set Cubie
+</span><a href="#local-6989586621679036238"><span class="hs-identifier hs-var">edgs</span></a></span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Set Cubie -&gt; Set Cubie -&gt; Set Cubie
 forall a. Ord a =&gt; Set a -&gt; Set a -&gt; Set a
 </span><span class="hs-identifier hs-var">difference</span></span><span> </span><span class="annot"><span class="annottext">Set Cubie
-</span><a href="#local-6989586621679033371"><span class="hs-identifier hs-var">edgs</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Cubie] -&gt; Set Cubie
+</span><a href="#local-6989586621679036238"><span class="hs-identifier hs-var">edgs</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Cubie] -&gt; Set Cubie
 forall a. Ord a =&gt; [a] -&gt; Set a
-</span><span class="hs-identifier hs-var">fromList</span></span><span> </span><span class="annot"><span class="annottext">[Cubie]
-</span><a href="#local-6989586621679033326"><span class="hs-identifier hs-var">cs</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span>
-</span><span id="line-60"></span><span>                     </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Bool
-forall a. Integral a =&gt; a -&gt; Bool
-</span><span class="hs-identifier hs-var">even</span></span><span> </span><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033369"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Set Cubie -&gt; Set Cubie -&gt; Set Cubie
+</span><span class="hs-identifier hs-var">fromList</span></span><span> </span><span class="annot"><span class="annottext">([Cubie] -&gt; Set Cubie)
+-&gt; ([Cubie] -&gt; [Cubie]) -&gt; [Cubie] -&gt; Set Cubie
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(Cubie -&gt; Cubie) -&gt; [Cubie] -&gt; [Cubie]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">Cubie -&gt; Cubie
+</span><a href="Cube.html#orient"><span class="hs-identifier hs-var">orient</span></a></span><span> </span><span class="annot"><span class="annottext">([Cubie] -&gt; Set Cubie) -&gt; [Cubie] -&gt; Set Cubie
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[Cubie]
+</span><a href="#local-6989586621679036208"><span class="hs-identifier hs-var">cs</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span>
+</span><span id="line-68"></span><span>       </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679036231"><span class="hs-identifier hs-var">isCorners</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Set Cubie -&gt; Set Cubie -&gt; Set Cubie
 forall a. Ord a =&gt; Set a -&gt; Set a -&gt; Set a
 </span><span class="hs-identifier hs-var">difference</span></span><span> </span><span class="annot"><span class="annottext">Set Cubie
-</span><a href="#local-6989586621679033370"><span class="hs-identifier hs-var">corns</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Cubie] -&gt; Set Cubie
+</span><a href="#local-6989586621679036237"><span class="hs-identifier hs-var">corns</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Cubie] -&gt; Set Cubie
 forall a. Ord a =&gt; [a] -&gt; Set a
-</span><span class="hs-identifier hs-var">fromList</span></span><span> </span><span class="annot"><span class="annottext">[Cubie]
-</span><a href="#local-6989586621679033326"><span class="hs-identifier hs-var">cs</span></a></span><span class="hs-special">)</span><span>
-</span><span id="line-61"></span><span>                     </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Set Cubie
-</span><a href="#local-6989586621679033370"><span class="hs-identifier hs-var">corns</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033369"><span class="hs-identifier hs-var">n</span></a></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+</span><span class="hs-identifier hs-var">fromList</span></span><span> </span><span class="annot"><span class="annottext">([Cubie] -&gt; Set Cubie)
+-&gt; ([Cubie] -&gt; [Cubie]) -&gt; [Cubie] -&gt; Set Cubie
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(Cubie -&gt; Cubie) -&gt; [Cubie] -&gt; [Cubie]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">Cubie -&gt; Cubie
+</span><a href="Cube.html#orient"><span class="hs-identifier hs-var">orient</span></a></span><span> </span><span class="annot"><span class="annottext">([Cubie] -&gt; Set Cubie) -&gt; [Cubie] -&gt; Set Cubie
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[Cubie]
+</span><a href="#local-6989586621679036208"><span class="hs-identifier hs-var">cs</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Set Cubie
+</span><a href="#local-6989586621679036237"><span class="hs-identifier hs-var">corns</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036236"><span class="hs-identifier hs-var">n</span></a></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
 forall a. Num a =&gt; a -&gt; a -&gt; a
 </span><span class="hs-operator hs-var">+</span></span><span class="annot"><span class="annottext">Int
 </span><span class="hs-number">1</span></span><span class="hs-special">)</span><span>
-</span><span id="line-62"></span><span>
-</span><span id="line-63"></span><span class="hs-comment">-- |Given a set of cubies, produce all possible rotations and permutations.</span><span>
-</span><span id="line-64"></span><span class="annot"><a href="ConstructForest.html#combinations"><span class="hs-identifier hs-type">combinations</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>        </span><span class="hs-comment">-- ^ set of corners (True) or edges (False)</span><span>
-</span><span id="line-65"></span><span>             </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>         </span><span class="hs-comment">-- ^ layer size</span><span>
-</span><span id="line-66"></span><span>             </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Set</span></span><span> </span><span class="annot"><a href="Cube.html#Cubie"><span class="hs-identifier hs-type">Cubie</span></a></span><span>   </span><span class="hs-comment">-- ^ set of cubies</span><span>
-</span><span id="line-67"></span><span>             </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Seq</span></span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Cube.html#Cubie"><span class="hs-identifier hs-type">Cubie</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-comment">-- ^ combinations</span><span>
-</span><span id="line-68"></span><span id="combinations"><span class="annot"><span class="annottext">combinations :: Bool -&gt; Int -&gt; Set Cubie -&gt; Seq [Cubie]
+</span><span id="line-69"></span><span>
+</span><span id="line-70"></span><span class="annot"><a href="ConstructForest.html#buildMiniNode"><span class="hs-identifier hs-type">buildMiniNode</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="ConstructForest.html#LayerSeed"><span class="hs-identifier hs-type">LayerSeed</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="ConstructForest.html#Layer"><span class="hs-identifier hs-type">Layer</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="ConstructForest.html#LayerSeed"><span class="hs-identifier hs-type">LayerSeed</span></a></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-71"></span><span id="buildMiniNode"><span class="annot"><span class="annottext">buildMiniNode :: LayerSeed -&gt; (Layer, [LayerSeed])
+</span><a href="ConstructForest.html#buildMiniNode"><span class="hs-identifier hs-var hs-var">buildMiniNode</span></a></span></span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Set Cubie
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Set Cubie
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">,</span><span>    </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-72"></span><span class="annot"><a href="ConstructForest.html#buildMiniNode"><span class="hs-identifier hs-var">buildMiniNode</span></a></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679036202"><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036202"><span class="hs-identifier hs-var">layer</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Set Cubie
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679036201"><span class="annot"><span class="annottext">Set Cubie
+</span><a href="#local-6989586621679036201"><span class="hs-identifier hs-var">corns</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679036200"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036200"><span class="hs-identifier hs-var">n</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036202"><span class="hs-identifier hs-var">layer</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">(LayerSeed -&gt; Bool) -&gt; [LayerSeed] -&gt; [LayerSeed]
+forall a. (a -&gt; Bool) -&gt; [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">filter</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Layer -&gt; LayerSeed -&gt; Bool
+</span><a href="ConstructForest.html#validMini"><span class="hs-identifier hs-var">validMini</span></a></span><span> </span><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036202"><span class="hs-identifier hs-var">layer</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[LayerSeed]
+</span><a href="#local-6989586621679036198"><span class="hs-identifier hs-var">embedded</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-73"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-74"></span><span>    </span><span id="local-6989586621679036198"><span class="annot"><span class="annottext">embedded :: [LayerSeed]
+</span><a href="#local-6989586621679036198"><span class="hs-identifier hs-var hs-var">embedded</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Seq [Cubie] -&gt; [LayerSeed]
+</span><a href="#local-6989586621679036197"><span class="hs-identifier hs-var">embedLayers</span></a></span><span> </span><span class="annot"><span class="annottext">(Seq [Cubie] -&gt; [LayerSeed]) -&gt; Seq [Cubie] -&gt; [LayerSeed]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Int -&gt; Set Cubie -&gt; Seq [Cubie]
+</span><a href="ConstructForest.html#combinations"><span class="hs-identifier hs-var">combinations</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036196"><span class="hs-identifier hs-var">layerSize</span></a></span><span> </span><span class="annot"><span class="annottext">Set Cubie
+</span><a href="#local-6989586621679036201"><span class="hs-identifier hs-var">corns</span></a></span><span>
+</span><span id="line-75"></span><span>    </span><span id="local-6989586621679036196"><span class="annot"><span class="annottext">layerSize :: Int
+</span><a href="#local-6989586621679036196"><span class="hs-identifier hs-var hs-var">layerSize</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036200"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="hs-keyword">of</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">3</span></span><span class="hs-special">;</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">3</span></span><span class="hs-special">;</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">4</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">;</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span>
+</span><span id="line-76"></span><span>    </span><span class="annot"><a href="#local-6989586621679036197"><span class="hs-identifier hs-type">embedLayers</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Seq</span></span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Cube.html#Cubie"><span class="hs-identifier hs-type">Cubie</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="ConstructForest.html#LayerSeed"><span class="hs-identifier hs-type">LayerSeed</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-77"></span><span>    </span><span id="local-6989586621679036197"><span class="annot"><span class="annottext">embedLayers :: Seq [Cubie] -&gt; [LayerSeed]
+</span><a href="#local-6989586621679036197"><span class="hs-identifier hs-var hs-var">embedLayers</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">([Cubie] -&gt; [LayerSeed] -&gt; [LayerSeed])
+-&gt; [LayerSeed] -&gt; Seq [Cubie] -&gt; [LayerSeed]
+forall (t :: * -&gt; *) a b.
+Foldable t =&gt;
+(a -&gt; b -&gt; b) -&gt; b -&gt; t a -&gt; b
+</span><span class="hs-identifier hs-var">foldr</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="hs-glyph">:</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(LayerSeed -&gt; [LayerSeed] -&gt; [LayerSeed])
+-&gt; ([Cubie] -&gt; LayerSeed) -&gt; [Cubie] -&gt; [LayerSeed] -&gt; [LayerSeed]
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[Cubie] -&gt; LayerSeed
+</span><a href="#local-6989586621679036185"><span class="hs-identifier hs-var">embedLayer</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-78"></span><span>    </span><span class="annot"><a href="#local-6989586621679036185"><span class="hs-identifier hs-type">embedLayer</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Cube.html#Cubie"><span class="hs-identifier hs-type">Cubie</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="ConstructForest.html#LayerSeed"><span class="hs-identifier hs-type">LayerSeed</span></a></span><span>
+</span><span id="line-79"></span><span>    </span><span id="local-6989586621679036185"><span class="annot"><span class="annottext">embedLayer :: [Cubie] -&gt; LayerSeed
+</span><a href="#local-6989586621679036185"><span class="hs-identifier hs-var hs-var">embedLayer</span></a></span></span><span> </span><span id="local-6989586621679036184"><span class="annot"><span class="annottext">[Cubie]
+</span><a href="#local-6989586621679036184"><span class="hs-identifier hs-var">cs</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-80"></span><span>      </span><span class="hs-special">(</span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">CubieEmbed :: Cubie -&gt; (Int, Int, Int) -&gt; CubieEmbed
+</span><a href="Cube.html#CubieEmbed"><span class="hs-identifier hs-type">CubieEmbed</span></a></span><span> </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">cubie :: Cubie
+</span><a href="Cube.html#cubie"><span class="hs-identifier hs-var">cubie</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Cubie
+</span><a href="#local-6989586621679036183"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">location :: (Int, Int, Int)
+</span><a href="Cube.html#location"><span class="hs-identifier hs-var">location</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; (Int, Int, Int)
+</span><a href="ConstructForest.html#cubieLocation"><span class="hs-identifier hs-var">cubieLocation</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036200"><span class="hs-identifier hs-var">n</span></a></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036182"><span class="hs-identifier hs-var">i</span></a></span><span> </span><span class="hs-special">}</span><span> </span><span class="hs-glyph">|</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679036183"><span class="annot"><span class="annottext">Cubie
+</span><a href="#local-6989586621679036183"><span class="hs-identifier hs-var">c</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679036182"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036182"><span class="hs-identifier hs-var">i</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">[Cubie] -&gt; [Int] -&gt; [(Cubie, Int)]
+forall a b. [a] -&gt; [b] -&gt; [(a, b)]
+</span><span class="hs-identifier hs-var">zip</span></span><span> </span><span class="annot"><span class="annottext">[Cubie]
+</span><a href="#local-6989586621679036184"><span class="hs-identifier hs-var">cs</span></a></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-glyph">..</span><span class="hs-special">]</span><span> </span><span class="hs-special">]</span><span class="hs-special">,</span><span>
+</span><span id="line-81"></span><span>       </span><span class="annot"><span class="annottext">Set Cubie
+forall a. Set a
+</span><span class="hs-identifier hs-var">empty</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Set Cubie -&gt; Set Cubie -&gt; Set Cubie
+forall a. Ord a =&gt; Set a -&gt; Set a -&gt; Set a
+</span><span class="hs-identifier hs-var">difference</span></span><span> </span><span class="annot"><span class="annottext">Set Cubie
+</span><a href="#local-6989586621679036201"><span class="hs-identifier hs-var">corns</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Cubie] -&gt; Set Cubie
+forall a. Ord a =&gt; [a] -&gt; Set a
+</span><span class="hs-identifier hs-var">fromList</span></span><span> </span><span class="annot"><span class="annottext">([Cubie] -&gt; Set Cubie)
+-&gt; ([Cubie] -&gt; [Cubie]) -&gt; [Cubie] -&gt; Set Cubie
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">(Cubie -&gt; Cubie) -&gt; [Cubie] -&gt; [Cubie]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">Cubie -&gt; Cubie
+</span><a href="Cube.html#orient"><span class="hs-identifier hs-var">orient</span></a></span><span> </span><span class="annot"><span class="annottext">([Cubie] -&gt; Set Cubie) -&gt; [Cubie] -&gt; Set Cubie
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[Cubie]
+</span><a href="#local-6989586621679036184"><span class="hs-identifier hs-var">cs</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036200"><span class="hs-identifier hs-var">n</span></a></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span>
+</span><span id="line-82"></span><span>
+</span><span id="line-83"></span><span class="hs-comment">-- |Given a set of cubies, produce all possible rotations and permutations.</span><span>
+</span><span id="line-84"></span><span class="annot"><a href="ConstructForest.html#combinations"><span class="hs-identifier hs-type">combinations</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>        </span><span class="hs-comment">-- ^ set of corners (True) or edges (False)</span><span>
+</span><span id="line-85"></span><span>             </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>         </span><span class="hs-comment">-- ^ layer size</span><span>
+</span><span id="line-86"></span><span>             </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Set</span></span><span> </span><span class="annot"><a href="Cube.html#Cubie"><span class="hs-identifier hs-type">Cubie</span></a></span><span>   </span><span class="hs-comment">-- ^ set of cubies</span><span>
+</span><span id="line-87"></span><span>             </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Seq</span></span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Cube.html#Cubie"><span class="hs-identifier hs-type">Cubie</span></a></span><span class="hs-special">]</span><span> </span><span class="hs-comment">-- ^ combinations</span><span>
+</span><span id="line-88"></span><span id="combinations"><span class="annot"><span class="annottext">combinations :: Bool -&gt; Int -&gt; Set Cubie -&gt; Seq [Cubie]
 </span><a href="ConstructForest.html#combinations"><span class="hs-identifier hs-var hs-var">combinations</span></a></span></span><span> </span><span class="annot"><span class="annottext">Bool
 </span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">Int
 </span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">Set Cubie
@@ -216,61 +357,57 @@ forall a. a -&gt; Seq a -&gt; Seq a
 </span><span class="hs-operator hs-var">&lt;|</span></span><span> </span><span class="annot"><span class="annottext">Seq [Cubie]
 forall a. Seq a
 </span><span class="hs-identifier hs-var">Empty</span></span><span>
-</span><span id="line-69"></span><span class="annot"><a href="ConstructForest.html#combinations"><span class="hs-identifier hs-var">combinations</span></a></span><span> </span><span id="local-6989586621679033320"><span class="annot"><span class="annottext">Bool
-</span><a href="#local-6989586621679033320"><span class="hs-identifier hs-var">isCorners</span></a></span></span><span> </span><span id="local-6989586621679033319"><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033319"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679033318"><span class="annot"><span class="annottext">Set Cubie
-</span><a href="#local-6989586621679033318"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Seq [Cubie] -&gt; Cubie -&gt; Seq [Cubie])
+</span><span id="line-89"></span><span class="annot"><a href="ConstructForest.html#combinations"><span class="hs-identifier hs-var">combinations</span></a></span><span> </span><span id="local-6989586621679036180"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679036180"><span class="hs-identifier hs-var">isCorners</span></a></span></span><span> </span><span id="local-6989586621679036179"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036179"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679036178"><span class="annot"><span class="annottext">Set Cubie
+</span><a href="#local-6989586621679036178"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Seq [Cubie] -&gt; Cubie -&gt; Seq [Cubie])
 -&gt; Seq [Cubie] -&gt; Set Cubie -&gt; Seq [Cubie]
 forall a b. (a -&gt; b -&gt; a) -&gt; a -&gt; Set b -&gt; a
 </span><span class="hs-identifier hs-var">foldl'</span></span><span> </span><span class="annot"><span class="annottext">Seq [Cubie] -&gt; Cubie -&gt; Seq [Cubie]
-</span><a href="#local-6989586621679033317"><span class="hs-identifier hs-var">adjoiner</span></a></span><span> </span><span class="annot"><span class="annottext">Seq [Cubie]
+</span><a href="#local-6989586621679036177"><span class="hs-identifier hs-var">adjoiner</span></a></span><span> </span><span class="annot"><span class="annottext">Seq [Cubie]
 forall a. Seq a
 </span><span class="hs-identifier hs-var">Empty</span></span><span> </span><span class="annot"><span class="annottext">Set Cubie
-</span><a href="#local-6989586621679033318"><span class="hs-identifier hs-var">s</span></a></span><span>
-</span><span id="line-70"></span><span>  </span><span class="hs-keyword">where</span><span>
-</span><span id="line-71"></span><span>    </span><span id="local-6989586621679033317"><span class="annot"><span class="annottext">adjoiner :: Seq [Cubie] -&gt; Cubie -&gt; Seq [Cubie]
-</span><a href="#local-6989586621679033317"><span class="hs-identifier hs-var hs-var">adjoiner</span></a></span></span><span> </span><span id="local-6989586621679033309"><span class="annot"><span class="annottext">Seq [Cubie]
-</span><a href="#local-6989586621679033309"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span id="local-6989586621679033308"><span class="annot"><span class="annottext">Cubie
-</span><a href="#local-6989586621679033308"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Seq [Cubie]
-</span><a href="#local-6989586621679033309"><span class="hs-identifier hs-var">l</span></a></span><span> </span><span class="annot"><span class="annottext">Seq [Cubie] -&gt; Seq [Cubie] -&gt; Seq [Cubie]
+</span><a href="#local-6989586621679036178"><span class="hs-identifier hs-var">s</span></a></span><span>
+</span><span id="line-90"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-91"></span><span>    </span><span id="local-6989586621679036177"><span class="annot"><span class="annottext">adjoiner :: Seq [Cubie] -&gt; Cubie -&gt; Seq [Cubie]
+</span><a href="#local-6989586621679036177"><span class="hs-identifier hs-var hs-var">adjoiner</span></a></span></span><span> </span><span id="local-6989586621679036169"><span class="annot"><span class="annottext">Seq [Cubie]
+</span><a href="#local-6989586621679036169"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span id="local-6989586621679036168"><span class="annot"><span class="annottext">Cubie
+</span><a href="#local-6989586621679036168"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Seq [Cubie]
+</span><a href="#local-6989586621679036169"><span class="hs-identifier hs-var">l</span></a></span><span> </span><span class="annot"><span class="annottext">Seq [Cubie] -&gt; Seq [Cubie] -&gt; Seq [Cubie]
 forall a. Seq a -&gt; Seq a -&gt; Seq a
-</span><span class="hs-operator hs-var">&gt;&lt;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Seq (Seq [Cubie]) -&gt; Seq [Cubie]
+</span><span class="hs-operator hs-var">&gt;&lt;</span></span><span> </span><span class="annot"><span class="annottext">Seq (Seq [Cubie]) -&gt; Seq [Cubie]
 forall (m :: * -&gt; *) a. Monad m =&gt; m (m a) -&gt; m a
-</span><span class="hs-identifier hs-var">join</span></span><span> </span><span class="annot"><span class="annottext">(Seq (Seq [Cubie]) -&gt; Seq [Cubie])
--&gt; Seq (Seq [Cubie]) -&gt; Seq [Cubie]
-forall a b. (a -&gt; b) -&gt; a -&gt; b
-</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Cubie -&gt; [Cubie] -&gt; Seq [Cubie]
-</span><a href="#local-6989586621679033307"><span class="hs-identifier hs-var">applyRotations</span></a></span><span> </span><span class="annot"><span class="annottext">Cubie
-</span><a href="#local-6989586621679033308"><span class="hs-identifier hs-var">a</span></a></span><span>
-</span><span id="line-72"></span><span>                             </span><span class="annot"><span class="annottext">([Cubie] -&gt; Seq [Cubie]) -&gt; Seq [Cubie] -&gt; Seq (Seq [Cubie])
+</span><span class="hs-identifier hs-var">join</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Cubie -&gt; [Cubie] -&gt; Seq [Cubie]
+</span><a href="#local-6989586621679036167"><span class="hs-identifier hs-var">applyRotations</span></a></span><span> </span><span class="annot"><span class="annottext">Cubie
+</span><a href="#local-6989586621679036168"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">([Cubie] -&gt; Seq [Cubie]) -&gt; Seq [Cubie] -&gt; Seq (Seq [Cubie])
 forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
 </span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Int -&gt; Set Cubie -&gt; Seq [Cubie]
 </span><a href="ConstructForest.html#combinations"><span class="hs-identifier hs-var">combinations</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
-</span><a href="#local-6989586621679033320"><span class="hs-identifier hs-var">isCorners</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033319"><span class="hs-identifier hs-var">n</span></a></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+</span><a href="#local-6989586621679036180"><span class="hs-identifier hs-var">isCorners</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036179"><span class="hs-identifier hs-var">n</span></a></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
 forall a. Num a =&gt; a -&gt; a -&gt; a
 </span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Int
 </span><span class="hs-number">1</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Cubie -&gt; Set Cubie -&gt; Set Cubie
 forall a. Ord a =&gt; a -&gt; Set a -&gt; Set a
 </span><span class="hs-identifier hs-var">delete</span></span><span> </span><span class="annot"><span class="annottext">Cubie
-</span><a href="#local-6989586621679033308"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">Set Cubie
-</span><a href="#local-6989586621679033318"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
-</span><span id="line-73"></span><span>    </span><span id="local-6989586621679033307"><span class="annot"><span class="annottext">applyRotations :: Cubie -&gt; [Cubie] -&gt; Seq [Cubie]
-</span><a href="#local-6989586621679033307"><span class="hs-identifier hs-var hs-var">applyRotations</span></a></span></span><span> </span><span id="local-6989586621679033305"><span class="annot"><span class="annottext">Cubie
-</span><a href="#local-6989586621679033305"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span id="local-6989586621679033304"><span class="annot"><span class="annottext">[Cubie]
-</span><a href="#local-6989586621679033304"><span class="hs-identifier hs-var">combins</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679033303"><span class="annot"><span class="annottext">Cubie -&gt; Cubie
-</span><a href="#local-6989586621679033303"><span class="hs-identifier hs-var">r</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Cubie -&gt; Cubie
-</span><a href="#local-6989586621679033303"><span class="hs-identifier hs-var">r</span></a></span><span> </span><span class="annot"><span class="annottext">Cubie
-</span><a href="#local-6989586621679033305"><span class="hs-identifier hs-var">a</span></a></span><span class="annot"><span class="annottext">Cubie -&gt; [Cubie] -&gt; [Cubie]
+</span><a href="#local-6989586621679036168"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">Set Cubie
+</span><a href="#local-6989586621679036178"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-92"></span><span>    </span><span id="local-6989586621679036167"><span class="annot"><span class="annottext">applyRotations :: Cubie -&gt; [Cubie] -&gt; Seq [Cubie]
+</span><a href="#local-6989586621679036167"><span class="hs-identifier hs-var hs-var">applyRotations</span></a></span></span><span> </span><span id="local-6989586621679036164"><span class="annot"><span class="annottext">Cubie
+</span><a href="#local-6989586621679036164"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span id="local-6989586621679036163"><span class="annot"><span class="annottext">[Cubie]
+</span><a href="#local-6989586621679036163"><span class="hs-identifier hs-var">combins</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679036162"><span class="annot"><span class="annottext">Cubie -&gt; Cubie
+</span><a href="#local-6989586621679036162"><span class="hs-identifier hs-var">r</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Cubie -&gt; Cubie
+</span><a href="#local-6989586621679036162"><span class="hs-identifier hs-var">r</span></a></span><span> </span><span class="annot"><span class="annottext">Cubie
+</span><a href="#local-6989586621679036164"><span class="hs-identifier hs-var">a</span></a></span><span class="annot"><span class="annottext">Cubie -&gt; [Cubie] -&gt; [Cubie]
 forall a. a -&gt; [a] -&gt; [a]
 </span><span class="hs-glyph hs-var">:</span></span><span class="annot"><span class="annottext">[Cubie]
-</span><a href="#local-6989586621679033304"><span class="hs-identifier hs-var">combins</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">((Cubie -&gt; Cubie) -&gt; [Cubie])
+</span><a href="#local-6989586621679036163"><span class="hs-identifier hs-var">combins</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">((Cubie -&gt; Cubie) -&gt; [Cubie])
 -&gt; Seq (Cubie -&gt; Cubie) -&gt; Seq [Cubie]
 forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
 </span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Seq (Cubie -&gt; Cubie)
-</span><a href="#local-6989586621679033302"><span class="hs-identifier hs-var">rotations</span></a></span><span>
-</span><span id="line-74"></span><span>    </span><span id="local-6989586621679033302"><span class="annot"><span class="annottext">rotations :: Seq (Cubie -&gt; Cubie)
-</span><a href="#local-6989586621679033302"><span class="hs-identifier hs-var hs-var">rotations</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Cubie -&gt; Cubie
+</span><a href="#local-6989586621679036161"><span class="hs-identifier hs-var">rotations</span></a></span><span>
+</span><span id="line-93"></span><span>    </span><span id="local-6989586621679036161"><span class="annot"><span class="annottext">rotations :: Seq (Cubie -&gt; Cubie)
+</span><a href="#local-6989586621679036161"><span class="hs-identifier hs-var hs-var">rotations</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Cubie -&gt; Cubie
 forall a. a -&gt; a
 </span><span class="hs-identifier hs-var">id</span></span><span> </span><span class="annot"><span class="annottext">(Cubie -&gt; Cubie) -&gt; Seq (Cubie -&gt; Cubie) -&gt; Seq (Cubie -&gt; Cubie)
 forall a. a -&gt; Seq a -&gt; Seq a
@@ -278,8 +415,8 @@ forall a. a -&gt; Seq a -&gt; Seq a
 </span><a href="Cube.html#rotate"><span class="hs-identifier hs-var">rotate</span></a></span><span> </span><span class="annot"><span class="annottext">(Cubie -&gt; Cubie) -&gt; Seq (Cubie -&gt; Cubie) -&gt; Seq (Cubie -&gt; Cubie)
 forall a. a -&gt; Seq a -&gt; Seq a
 </span><span class="hs-operator hs-var">&lt;|</span></span><span>
-</span><span id="line-75"></span><span>                </span><span class="hs-special">(</span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Bool
-</span><a href="#local-6989586621679033320"><span class="hs-identifier hs-var">isCorners</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Cubie -&gt; Cubie
+</span><span id="line-94"></span><span>                </span><span class="hs-special">(</span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679036180"><span class="hs-identifier hs-var">isCorners</span></a></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Cubie -&gt; Cubie
 </span><a href="Cube.html#rotate"><span class="hs-identifier hs-var">rotate</span></a></span><span> </span><span class="annot"><span class="annottext">(Cubie -&gt; Cubie) -&gt; (Cubie -&gt; Cubie) -&gt; Cubie -&gt; Cubie
 forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
 </span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Cubie -&gt; Cubie
@@ -290,47 +427,49 @@ forall a. Seq a
 </span><span class="hs-identifier hs-var">Empty</span></span><span> </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Seq (Cubie -&gt; Cubie)
 forall a. Seq a
 </span><span class="hs-identifier hs-var">Empty</span></span><span class="hs-special">)</span><span>
-</span><span id="line-76"></span><span>
-</span><span id="line-77"></span><span class="hs-comment">-- |Calculate the location of a cubie given the layer number and its position in the layer.</span><span>
-</span><span id="line-78"></span><span class="annot"><a href="ConstructForest.html#cubieLocation"><span class="hs-identifier hs-type">cubieLocation</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>             </span><span class="hs-comment">-- ^ layer number</span><span>
-</span><span id="line-79"></span><span>              </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>             </span><span class="hs-comment">-- ^ cubie index</span><span>
-</span><span id="line-80"></span><span>              </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">)</span><span> </span><span class="hs-comment">-- ^ coordinates</span><span>
-</span><span id="line-81"></span><span id="cubieLocation"><span class="annot"><span class="annottext">cubieLocation :: Int -&gt; Int -&gt; (Int, Int, Int)
+</span><span id="line-95"></span><span>
+</span><span id="line-96"></span><span class="hs-comment">-- |Calculate the location of a cubie given the layer number and its position in the layer.</span><span>
+</span><span id="line-97"></span><span class="annot"><a href="ConstructForest.html#cubieLocation"><span class="hs-identifier hs-type">cubieLocation</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>             </span><span class="hs-comment">-- ^ layer number</span><span>
+</span><span id="line-98"></span><span>              </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span>             </span><span class="hs-comment">-- ^ cubie index</span><span>
+</span><span id="line-99"></span><span>              </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">)</span><span> </span><span class="hs-comment">-- ^ coordinates</span><span>
+</span><span id="line-100"></span><span id="cubieLocation"><span class="annot"><span class="annottext">cubieLocation :: Int -&gt; Int -&gt; (Int, Int, Int)
 </span><a href="ConstructForest.html#cubieLocation"><span class="hs-identifier hs-var hs-var">cubieLocation</span></a></span></span><span> </span><span class="annot"><span class="annottext">Int
-</span><span class="hs-number">3</span></span><span> </span><span id="local-6989586621679033301"><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033301"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Int] -&gt; (Int, Int, Int)
-forall {c}. [c] -&gt; (c, c, c)
-</span><a href="#local-6989586621679033300"><span class="hs-identifier hs-var">toTuple</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Int] -&gt; [[Int]]
-forall a. [a] -&gt; [[a]]
-</span><span class="hs-identifier hs-var">permutations</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
-</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
-</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
-</span><span class="hs-number">2</span></span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">[[Int]] -&gt; Int -&gt; [Int]
+</span><span class="hs-number">3</span></span><span> </span><span id="local-6989586621679036160"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036160"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span class="hs-special">]</span><span> </span><span class="annot"><span class="annottext">[(Int, Int, Int)] -&gt; Int -&gt; (Int, Int, Int)
 forall a. [a] -&gt; Int -&gt; a
 </span><span class="hs-operator hs-var">!!</span></span><span> </span><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033301"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">)</span><span>
-</span><span id="line-82"></span><span>  </span><span class="hs-keyword">where</span><span>
-</span><span id="line-83"></span><span>    </span><span id="local-6989586621679033300"><span class="annot"><span class="annottext">toTuple :: [c] -&gt; (c, c, c)
-</span><a href="#local-6989586621679033300"><span class="hs-identifier hs-var hs-var">toTuple</span></a></span></span><span> </span><span class="hs-special">[</span><span id="local-6989586621679033298"><span class="annot"><span class="annottext">c
-</span><a href="#local-6989586621679033298"><span class="hs-identifier hs-var">a</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679033297"><span class="annot"><span class="annottext">c
-</span><a href="#local-6989586621679033297"><span class="hs-identifier hs-var">b</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679033296"><span class="annot"><span class="annottext">c
-</span><a href="#local-6989586621679033296"><span class="hs-identifier hs-var">c</span></a></span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">c
-</span><a href="#local-6989586621679033298"><span class="hs-identifier hs-var">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">c
-</span><a href="#local-6989586621679033297"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">c
-</span><a href="#local-6989586621679033296"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">)</span><span>
-</span><span id="line-84"></span><span class="annot"><a href="ConstructForest.html#cubieLocation"><span class="hs-identifier hs-var">cubieLocation</span></a></span><span> </span><span id="local-6989586621679033295"><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033295"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679033294"><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033294"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[(Int, Int, Int)] -&gt; Int -&gt; (Int, Int, Int)
+</span><a href="#local-6989586621679036160"><span class="hs-identifier hs-var">i</span></a></span><span>
+</span><span id="line-101"></span><span class="annot"><a href="ConstructForest.html#cubieLocation"><span class="hs-identifier hs-var">cubieLocation</span></a></span><span> </span><span id="local-6989586621679036158"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036158"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679036157"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036157"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[(Int, Int, Int)] -&gt; Int -&gt; (Int, Int, Int)
 forall a. [a] -&gt; Int -&gt; a
 </span><span class="hs-operator hs-var">!!</span></span><span> </span><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033294"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">([(Int, Int, Int)] -&gt; (Int, Int, Int))
+</span><a href="#local-6989586621679036157"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">([(Int, Int, Int)] -&gt; (Int, Int, Int))
 -&gt; [(Int, Int, Int)] -&gt; (Int, Int, Int)
 forall a b. (a -&gt; b) -&gt; a -&gt; b
 </span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">((Int, Int, Int) -&gt; (Int, Int, Int))
 -&gt; [(Int, Int, Int)] -&gt; [(Int, Int, Int)]
 forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
 </span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">(Int, Int, Int) -&gt; (Int, Int, Int)
-</span><a href="#local-6989586621679033293"><span class="hs-identifier hs-var">transform</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036156"><span class="hs-identifier hs-var">transform</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
 </span><span class="hs-number">1</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
 </span><span class="hs-number">0</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
 </span><span class="hs-number">0</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
@@ -340,85 +479,446 @@ forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
 </span><span class="hs-number">0</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
 </span><span class="hs-number">0</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Int
 </span><span class="hs-number">1</span></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
-</span><span id="line-85"></span><span>  </span><span class="hs-keyword">where</span><span>
-</span><span id="line-86"></span><span>    </span><span id="local-6989586621679033293"><span class="annot"><span class="annottext">transform :: (Int, Int, Int) -&gt; (Int, Int, Int)
-</span><a href="#local-6989586621679033293"><span class="hs-identifier hs-var hs-var">transform</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679033271"><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033271"><span class="hs-identifier hs-var">a</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679033270"><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033270"><span class="hs-identifier hs-var">b</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679033269"><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033269"><span class="hs-identifier hs-var">c</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033295"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Bool
+</span><span id="line-102"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-103"></span><span>    </span><span id="local-6989586621679036156"><span class="annot"><span class="annottext">transform :: (Int, Int, Int) -&gt; (Int, Int, Int)
+</span><a href="#local-6989586621679036156"><span class="hs-identifier hs-var hs-var">transform</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679036135"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036135"><span class="hs-identifier hs-var">a</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679036134"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036134"><span class="hs-identifier hs-var">b</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679036133"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036133"><span class="hs-identifier hs-var">c</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036158"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Bool
 forall a. Ord a =&gt; a -&gt; a -&gt; Bool
 </span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Int
 </span><span class="hs-number">3</span></span><span> </span><span class="hs-keyword">then</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033295"><span class="hs-identifier hs-var">n</span></a></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+</span><a href="#local-6989586621679036158"><span class="hs-identifier hs-var">n</span></a></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
 forall a. Num a =&gt; a -&gt; a -&gt; a
 </span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033271"><span class="hs-identifier hs-var">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033295"><span class="hs-identifier hs-var">n</span></a></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+</span><a href="#local-6989586621679036135"><span class="hs-identifier hs-var">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036158"><span class="hs-identifier hs-var">n</span></a></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
 forall a. Num a =&gt; a -&gt; a -&gt; a
 </span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033270"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033295"><span class="hs-identifier hs-var">n</span></a></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+</span><a href="#local-6989586621679036134"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036158"><span class="hs-identifier hs-var">n</span></a></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
 forall a. Num a =&gt; a -&gt; a -&gt; a
 </span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033269"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">)</span><span>
-</span><span id="line-87"></span><span>                          </span><span class="hs-keyword">else</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036133"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-104"></span><span>                          </span><span class="hs-keyword">else</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
 </span><span class="hs-number">2</span></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
 forall a. Num a =&gt; a -&gt; a -&gt; a
 </span><span class="hs-glyph hs-var">-</span></span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
 </span><span class="hs-number">6</span></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
 forall a. Num a =&gt; a -&gt; a -&gt; a
 </span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033295"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">)</span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+</span><a href="#local-6989586621679036158"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">)</span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
 forall a. Num a =&gt; a -&gt; a -&gt; a
 </span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033271"><span class="hs-identifier hs-var">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036135"><span class="hs-identifier hs-var">a</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
 </span><span class="hs-number">2</span></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
 forall a. Num a =&gt; a -&gt; a -&gt; a
 </span><span class="hs-glyph hs-var">-</span></span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
 </span><span class="hs-number">6</span></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
 forall a. Num a =&gt; a -&gt; a -&gt; a
 </span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033295"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">)</span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+</span><a href="#local-6989586621679036158"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">)</span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
 forall a. Num a =&gt; a -&gt; a -&gt; a
 </span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033270"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036134"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
 </span><span class="hs-number">2</span></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
 forall a. Num a =&gt; a -&gt; a -&gt; a
 </span><span class="hs-glyph hs-var">-</span></span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
 </span><span class="hs-number">6</span></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
 forall a. Num a =&gt; a -&gt; a -&gt; a
 </span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033295"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">)</span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+</span><a href="#local-6989586621679036158"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">)</span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
 forall a. Num a =&gt; a -&gt; a -&gt; a
 </span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033269"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">)</span><span>
-</span><span id="line-88"></span><span>
-</span><span id="line-89"></span><span class="hs-comment">-- |Test whether or not the cubies in the new layer share colours with those on the old layer.</span><span>
-</span><span id="line-90"></span><span class="annot"><a href="ConstructForest.html#valid"><span class="hs-identifier hs-type">valid</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Cube.html#Layer"><span class="hs-identifier hs-type">Layer</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="ConstructForest.html#LayerSeed"><span class="hs-identifier hs-type">LayerSeed</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
-</span><span id="line-91"></span><span id="valid"><span class="annot"><span class="annottext">valid :: Layer -&gt; LayerSeed -&gt; Bool
-</span><a href="ConstructForest.html#valid"><span class="hs-identifier hs-var hs-var">valid</span></a></span></span><span> </span><span id="local-6989586621679033267"><span class="annot"><span class="annottext">Layer
-</span><a href="#local-6989586621679033267"><span class="hs-identifier hs-var">ol</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679033266"><span class="annot"><span class="annottext">Layer
-</span><a href="#local-6989586621679033266"><span class="hs-identifier hs-var">nl</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Set Cubie
+</span><a href="#local-6989586621679036133"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-105"></span><span>
+</span><span id="line-106"></span><span class="hs-comment">-- |Test whether or not the cubies in the new layer share colours with those on the old layer.</span><span>
+</span><span id="line-107"></span><span class="annot"><a href="ConstructForest.html#valid"><span class="hs-identifier hs-type">valid</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="ConstructForest.html#Layer"><span class="hs-identifier hs-type">Layer</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="ConstructForest.html#LayerSeed"><span class="hs-identifier hs-type">LayerSeed</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-108"></span><span id="valid"><span class="annot"><span class="annottext">valid :: Layer -&gt; LayerSeed -&gt; Bool
+</span><a href="ConstructForest.html#valid"><span class="hs-identifier hs-var hs-var">valid</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679036131"><span class="annot"><span class="annottext">CubieEmbed
+</span><a href="#local-6989586621679036131"><span class="hs-identifier hs-var">o</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span class="annot"><span class="annottext">Layer
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679036130"><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036130"><span class="hs-identifier hs-var">nl</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Set Cubie
 </span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Set Cubie
 </span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
-</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Bool] -&gt; Bool
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-109"></span><span>  </span><span class="annot"><span class="annottext">[Bool] -&gt; Bool
 forall (t :: * -&gt; *). Foldable t =&gt; t Bool -&gt; Bool
-</span><span class="hs-identifier hs-var">and</span></span><span> </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">CubieEmbed -&gt; Bool
-forall {a}. CubieEmbed -&gt; a
-</span><a href="#local-6989586621679033264"><span class="hs-identifier hs-var">checkColors</span></a></span><span> </span><span class="annot"><span class="annottext">CubieEmbed
-</span><a href="#local-6989586621679033263"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679033263"><span class="annot"><span class="annottext">CubieEmbed
-</span><a href="#local-6989586621679033263"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Layer
-</span><a href="#local-6989586621679033266"><span class="hs-identifier hs-var">nl</span></a></span><span> </span><span class="hs-special">]</span><span>
-</span><span id="line-92"></span><span>  </span><span class="hs-keyword">where</span><span>
-</span><span id="line-93"></span><span>    </span><span id="local-6989586621679033264"><span class="annot"><span class="annottext">checkColors :: CubieEmbed -&gt; a
-</span><a href="#local-6989586621679033264"><span class="hs-identifier hs-var hs-var">checkColors</span></a></span></span><span> </span><span class="annot"><a href="Cube.html#CubieEmbed"><span class="hs-identifier hs-type">CubieEmbed</span></a></span><span> </span><span class="hs-special">{</span><span class="annot"><span class="annottext">cubie :: CubieEmbed -&gt; Cubie
-</span><a href="Cube.html#cubie"><span class="hs-identifier hs-var">cubie</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="local-6989586621679033260"><span class="annot"><span class="annottext">Cubie
-</span><a href="#local-6989586621679033260"><span class="hs-identifier hs-var">c</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">location :: CubieEmbed -&gt; (Int, Int, Int)
-</span><a href="Cube.html#location"><span class="hs-identifier hs-var">location</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679033259"><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033259"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679033258"><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033258"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679033257"><span class="annot"><span class="annottext">Int
-</span><a href="#local-6989586621679033257"><span class="hs-identifier hs-var">z</span></a></span></span><span class="hs-special">)</span><span class="hs-special">}</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a
-forall a. HasCallStack =&gt; a
-</span><span class="hs-identifier hs-var">undefined</span></span><span>
-</span><span id="line-94"></span></pre></body></html>
+</span><span class="hs-identifier hs-var">and</span></span><span> </span><span class="annot"><span class="annottext">([Bool] -&gt; Bool) -&gt; [Bool] -&gt; Bool
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool
+</span><span class="hs-identifier hs-var">not</span></span><span> </span><span class="annot"><span class="annottext">(Bool -&gt; Bool) -&gt; Bool -&gt; Bool
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">CubieEmbed -&gt; CubieEmbed -&gt; Bool
+</span><a href="Cube.html#shareColor"><span class="hs-identifier hs-var">shareColor</span></a></span><span> </span><span class="annot"><span class="annottext">CubieEmbed
+</span><a href="#local-6989586621679036126"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">CubieEmbed
+</span><a href="#local-6989586621679036131"><span class="hs-identifier hs-var">o</span></a></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679036126"><span class="annot"><span class="annottext">CubieEmbed
+</span><a href="#local-6989586621679036126"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036130"><span class="hs-identifier hs-var">nl</span></a></span><span> </span><span class="hs-special">]</span><span>
+</span><span id="line-110"></span><span>     </span><span class="annot"><span class="annottext">[Bool] -&gt; [Bool] -&gt; [Bool]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">[[Bool]] -&gt; [Bool]
+forall (t :: * -&gt; *) a. Foldable t =&gt; t [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">concat</span></span><span> </span><span class="hs-special">[</span><span>
+</span><span id="line-111"></span><span>                </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">Maybe Color -&gt; Color
+forall a. HasCallStack =&gt; Maybe a -&gt; a
+</span><span class="hs-identifier hs-var">fromJust</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">CubieEmbed -&gt; Face -&gt; Maybe Color
+</span><a href="Cube.html#cubieColor"><span class="hs-identifier hs-var">cubieColor</span></a></span><span> </span><span class="annot"><span class="annottext">CubieEmbed
+</span><a href="#local-6989586621679036123"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="#local-6989586621679036122"><span class="hs-identifier hs-var">f</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Color -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">/=</span></span><span> </span><span class="annot"><span class="annottext">Face -&gt; Color
+</span><a href="Cube.html#faceToColor"><span class="hs-identifier hs-var">faceToColor</span></a></span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="#local-6989586621679036122"><span class="hs-identifier hs-var">f</span></a></span><span>
+</span><span id="line-112"></span><span>                </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679036122"><span class="annot"><span class="annottext">Face
+</span><a href="#local-6989586621679036122"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(Int, Int, Int) -&gt; Face
+</span><a href="Cube.html#normalToFace"><span class="hs-identifier hs-var">normalToFace</span></a></span><span> </span><span class="annot"><span class="annottext">((Int, Int, Int) -&gt; Face) -&gt; [(Int, Int, Int)] -&gt; [Face]
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">CubieEmbed -&gt; [(Int, Int, Int)]
+</span><a href="Cube.html#normals"><span class="hs-identifier hs-var">normals</span></a></span><span> </span><span class="annot"><span class="annottext">CubieEmbed
+</span><a href="#local-6989586621679036123"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="hs-special">]</span><span>
+</span><span id="line-113"></span><span>               </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679036123"><span class="annot"><span class="annottext">CubieEmbed
+</span><a href="#local-6989586621679036123"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036130"><span class="hs-identifier hs-var">nl</span></a></span><span> </span><span class="hs-special">]</span><span>
+</span><span id="line-114"></span><span class="annot"><a href="ConstructForest.html#valid"><span class="hs-identifier hs-var">valid</span></a></span><span> </span><span id="local-6989586621679036117"><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036117"><span class="hs-identifier hs-var">ol</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679036116"><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036116"><span class="hs-identifier hs-var">nl</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Set Cubie
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Set Cubie
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Bool] -&gt; Bool
+forall (t :: * -&gt; *). Foldable t =&gt; t Bool -&gt; Bool
+</span><span class="hs-identifier hs-var">and</span></span><span> </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool
+</span><span class="hs-identifier hs-var">not</span></span><span> </span><span class="annot"><span class="annottext">(Bool -&gt; Bool) -&gt; Bool -&gt; Bool
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">CubieEmbed -&gt; CubieEmbed -&gt; Bool
+</span><a href="Cube.html#shareColor"><span class="hs-identifier hs-var">shareColor</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036117"><span class="hs-identifier hs-var">ol</span></a></span><span> </span><span class="annot"><span class="annottext">Layer -&gt; Int -&gt; CubieEmbed
+forall a. [a] -&gt; Int -&gt; a
+</span><span class="hs-operator hs-var">!!</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036115"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036116"><span class="hs-identifier hs-var">nl</span></a></span><span> </span><span class="annot"><span class="annottext">Layer -&gt; Int -&gt; CubieEmbed
+forall a. [a] -&gt; Int -&gt; a
+</span><span class="hs-operator hs-var">!!</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036115"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679036115"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036115"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-glyph">..</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">]</span><span> </span><span class="hs-special">]</span><span>
+</span><span id="line-115"></span><span class="annot"><a href="ConstructForest.html#valid"><span class="hs-identifier hs-var">valid</span></a></span><span> </span><span id="local-6989586621679036114"><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036114"><span class="hs-identifier hs-var">ol</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679036113"><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036113"><span class="hs-identifier hs-var">nl</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Set Cubie
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Set Cubie
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">3</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-116"></span><span>  </span><span class="annot"><span class="annottext">[Bool] -&gt; Bool
+forall (t :: * -&gt; *). Foldable t =&gt; t Bool -&gt; Bool
+</span><span class="hs-identifier hs-var">and</span></span><span> </span><span class="annot"><span class="annottext">([Bool] -&gt; Bool) -&gt; [Bool] -&gt; Bool
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool
+</span><span class="hs-identifier hs-var">not</span></span><span> </span><span class="annot"><span class="annottext">(Bool -&gt; Bool) -&gt; Bool -&gt; Bool
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">CubieEmbed -&gt; CubieEmbed -&gt; Bool
+</span><a href="Cube.html#shareColor"><span class="hs-identifier hs-var">shareColor</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036113"><span class="hs-identifier hs-var">nl</span></a></span><span> </span><span class="annot"><span class="annottext">Layer -&gt; Int -&gt; CubieEmbed
+forall a. [a] -&gt; Int -&gt; a
+</span><span class="hs-operator hs-var">!!</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036112"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>   </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036114"><span class="hs-identifier hs-var">ol</span></a></span><span> </span><span class="annot"><span class="annottext">Layer -&gt; Int -&gt; CubieEmbed
+forall a. [a] -&gt; Int -&gt; a
+</span><span class="hs-operator hs-var">!!</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036112"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679036112"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036112"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-glyph">..</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">]</span><span> </span><span class="hs-special">]</span><span>
+</span><span id="line-117"></span><span>     </span><span class="annot"><span class="annottext">[Bool] -&gt; [Bool] -&gt; [Bool]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool
+</span><span class="hs-identifier hs-var">not</span></span><span> </span><span class="annot"><span class="annottext">(Bool -&gt; Bool) -&gt; Bool -&gt; Bool
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">CubieEmbed -&gt; CubieEmbed -&gt; Bool
+</span><a href="Cube.html#shareColor"><span class="hs-identifier hs-var">shareColor</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036113"><span class="hs-identifier hs-var">nl</span></a></span><span> </span><span class="annot"><span class="annottext">Layer -&gt; Int -&gt; CubieEmbed
+forall a. [a] -&gt; Int -&gt; a
+</span><span class="hs-operator hs-var">!!</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">*</span></span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036111"><span class="hs-identifier hs-var">i</span></a></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036114"><span class="hs-identifier hs-var">ol</span></a></span><span> </span><span class="annot"><span class="annottext">Layer -&gt; Int -&gt; CubieEmbed
+forall a. [a] -&gt; Int -&gt; a
+</span><span class="hs-operator hs-var">!!</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036111"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679036111"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036111"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-glyph">..</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">]</span><span> </span><span class="hs-special">]</span><span>
+</span><span id="line-118"></span><span>     </span><span class="annot"><span class="annottext">[Bool] -&gt; [Bool] -&gt; [Bool]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">[[Bool]] -&gt; [Bool]
+forall (t :: * -&gt; *) a. Foldable t =&gt; t [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">concat</span></span><span> </span><span class="hs-special">[</span><span> </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">Maybe Color -&gt; Color
+forall a. HasCallStack =&gt; Maybe a -&gt; a
+</span><span class="hs-identifier hs-var">fromJust</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">CubieEmbed -&gt; Face -&gt; Maybe Color
+</span><a href="Cube.html#cubieColor"><span class="hs-identifier hs-var">cubieColor</span></a></span><span> </span><span class="annot"><span class="annottext">CubieEmbed
+</span><a href="#local-6989586621679036110"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="#local-6989586621679036109"><span class="hs-identifier hs-var">f</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Color -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">/=</span></span><span> </span><span class="annot"><span class="annottext">Face -&gt; Color
+</span><a href="Cube.html#faceToColor"><span class="hs-identifier hs-var">faceToColor</span></a></span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="#local-6989586621679036109"><span class="hs-identifier hs-var">f</span></a></span><span>
+</span><span id="line-119"></span><span>                 </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679036109"><span class="annot"><span class="annottext">Face
+</span><a href="#local-6989586621679036109"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(Int, Int, Int) -&gt; Face
+</span><a href="Cube.html#normalToFace"><span class="hs-identifier hs-var">normalToFace</span></a></span><span> </span><span class="annot"><span class="annottext">((Int, Int, Int) -&gt; Face) -&gt; [(Int, Int, Int)] -&gt; [Face]
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">CubieEmbed -&gt; [(Int, Int, Int)]
+</span><a href="Cube.html#normals"><span class="hs-identifier hs-var">normals</span></a></span><span> </span><span class="annot"><span class="annottext">CubieEmbed
+</span><a href="#local-6989586621679036110"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="hs-special">]</span><span>
+</span><span id="line-120"></span><span>               </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679036110"><span class="annot"><span class="annottext">CubieEmbed
+</span><a href="#local-6989586621679036110"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036113"><span class="hs-identifier hs-var">nl</span></a></span><span> </span><span class="hs-special">]</span><span>
+</span><span id="line-121"></span><span class="annot"><a href="ConstructForest.html#valid"><span class="hs-identifier hs-var">valid</span></a></span><span> </span><span id="local-6989586621679036108"><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036108"><span class="hs-identifier hs-var">ol</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679036107"><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036107"><span class="hs-identifier hs-var">nl</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Set Cubie
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Set Cubie
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">4</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-122"></span><span>  </span><span class="annot"><span class="annottext">[Bool] -&gt; Bool
+forall (t :: * -&gt; *). Foldable t =&gt; t Bool -&gt; Bool
+</span><span class="hs-identifier hs-var">and</span></span><span> </span><span class="annot"><span class="annottext">([Bool] -&gt; Bool) -&gt; [Bool] -&gt; Bool
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool
+</span><span class="hs-identifier hs-var">not</span></span><span> </span><span class="annot"><span class="annottext">(Bool -&gt; Bool) -&gt; Bool -&gt; Bool
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">CubieEmbed -&gt; CubieEmbed -&gt; Bool
+</span><a href="Cube.html#shareColor"><span class="hs-identifier hs-var">shareColor</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036108"><span class="hs-identifier hs-var">ol</span></a></span><span> </span><span class="annot"><span class="annottext">Layer -&gt; Int -&gt; CubieEmbed
+forall a. [a] -&gt; Int -&gt; a
+</span><span class="hs-operator hs-var">!!</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036106"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>   </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036107"><span class="hs-identifier hs-var">nl</span></a></span><span> </span><span class="annot"><span class="annottext">Layer -&gt; Int -&gt; CubieEmbed
+forall a. [a] -&gt; Int -&gt; a
+</span><span class="hs-operator hs-var">!!</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036106"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679036106"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036106"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-glyph">..</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">]</span><span> </span><span class="hs-special">]</span><span>
+</span><span id="line-123"></span><span>     </span><span class="annot"><span class="annottext">[Bool] -&gt; [Bool] -&gt; [Bool]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool
+</span><span class="hs-identifier hs-var">not</span></span><span> </span><span class="annot"><span class="annottext">(Bool -&gt; Bool) -&gt; Bool -&gt; Bool
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">CubieEmbed -&gt; CubieEmbed -&gt; Bool
+</span><a href="Cube.html#shareColor"><span class="hs-identifier hs-var">shareColor</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036108"><span class="hs-identifier hs-var">ol</span></a></span><span> </span><span class="annot"><span class="annottext">Layer -&gt; Int -&gt; CubieEmbed
+forall a. [a] -&gt; Int -&gt; a
+</span><span class="hs-operator hs-var">!!</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">5</span></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036105"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036107"><span class="hs-identifier hs-var">nl</span></a></span><span> </span><span class="annot"><span class="annottext">Layer -&gt; Int -&gt; CubieEmbed
+forall a. [a] -&gt; Int -&gt; a
+</span><span class="hs-operator hs-var">!!</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036105"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679036105"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036105"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-glyph">..</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">]</span><span> </span><span class="hs-special">]</span><span>
+</span><span id="line-124"></span><span class="annot"><a href="ConstructForest.html#valid"><span class="hs-identifier hs-var">valid</span></a></span><span> </span><span id="local-6989586621679036104"><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036104"><span class="hs-identifier hs-var">ol</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679036103"><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036103"><span class="hs-identifier hs-var">nl</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Set Cubie
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Set Cubie
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">5</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-125"></span><span>  </span><span class="annot"><span class="annottext">[Bool] -&gt; Bool
+forall (t :: * -&gt; *). Foldable t =&gt; t Bool -&gt; Bool
+</span><span class="hs-identifier hs-var">and</span></span><span> </span><span class="annot"><span class="annottext">([Bool] -&gt; Bool) -&gt; [Bool] -&gt; Bool
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool
+</span><span class="hs-identifier hs-var">not</span></span><span> </span><span class="annot"><span class="annottext">(Bool -&gt; Bool) -&gt; Bool -&gt; Bool
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">CubieEmbed -&gt; CubieEmbed -&gt; Bool
+</span><a href="Cube.html#shareColor"><span class="hs-identifier hs-var">shareColor</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036103"><span class="hs-identifier hs-var">nl</span></a></span><span> </span><span class="annot"><span class="annottext">Layer -&gt; Int -&gt; CubieEmbed
+forall a. [a] -&gt; Int -&gt; a
+</span><span class="hs-operator hs-var">!!</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036102"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036104"><span class="hs-identifier hs-var">ol</span></a></span><span> </span><span class="annot"><span class="annottext">Layer -&gt; Int -&gt; CubieEmbed
+forall a. [a] -&gt; Int -&gt; a
+</span><span class="hs-operator hs-var">!!</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036102"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679036102"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036102"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-glyph">..</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">]</span><span> </span><span class="hs-special">]</span><span>
+</span><span id="line-126"></span><span>     </span><span class="annot"><span class="annottext">[Bool] -&gt; [Bool] -&gt; [Bool]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">[[Bool]] -&gt; [Bool]
+forall (t :: * -&gt; *) a. Foldable t =&gt; t [a] -&gt; [a]
+</span><span class="hs-identifier hs-var">concat</span></span><span> </span><span class="hs-special">[</span><span> </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">Maybe Color -&gt; Color
+forall a. HasCallStack =&gt; Maybe a -&gt; a
+</span><span class="hs-identifier hs-var">fromJust</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">CubieEmbed -&gt; Face -&gt; Maybe Color
+</span><a href="Cube.html#cubieColor"><span class="hs-identifier hs-var">cubieColor</span></a></span><span> </span><span class="annot"><span class="annottext">CubieEmbed
+</span><a href="#local-6989586621679036101"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="#local-6989586621679036100"><span class="hs-identifier hs-var">f</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Color -&gt; Color -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">/=</span></span><span> </span><span class="annot"><span class="annottext">Face -&gt; Color
+</span><a href="Cube.html#faceToColor"><span class="hs-identifier hs-var">faceToColor</span></a></span><span> </span><span class="annot"><span class="annottext">Face
+</span><a href="#local-6989586621679036100"><span class="hs-identifier hs-var">f</span></a></span><span>
+</span><span id="line-127"></span><span>                 </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679036100"><span class="annot"><span class="annottext">Face
+</span><a href="#local-6989586621679036100"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(Int, Int, Int) -&gt; Face
+</span><a href="Cube.html#normalToFace"><span class="hs-identifier hs-var">normalToFace</span></a></span><span> </span><span class="annot"><span class="annottext">((Int, Int, Int) -&gt; Face) -&gt; [(Int, Int, Int)] -&gt; [Face]
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">CubieEmbed -&gt; [(Int, Int, Int)]
+</span><a href="Cube.html#normals"><span class="hs-identifier hs-var">normals</span></a></span><span> </span><span class="annot"><span class="annottext">CubieEmbed
+</span><a href="#local-6989586621679036101"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="hs-special">]</span><span>
+</span><span id="line-128"></span><span>               </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679036101"><span class="annot"><span class="annottext">CubieEmbed
+</span><a href="#local-6989586621679036101"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036103"><span class="hs-identifier hs-var">nl</span></a></span><span> </span><span class="hs-special">]</span><span>
+</span><span id="line-129"></span><span class="annot"><a href="ConstructForest.html#valid"><span class="hs-identifier hs-var">valid</span></a></span><span> </span><span id="local-6989586621679036099"><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036099"><span class="hs-identifier hs-var">ol</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679036098"><span class="annot"><span class="annottext">CubieEmbed
+</span><a href="#local-6989586621679036098"><span class="hs-identifier hs-var">n</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span class="annot"><span class="annottext">Layer
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Set Cubie
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Set Cubie
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">6</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Bool] -&gt; Bool
+forall (t :: * -&gt; *). Foldable t =&gt; t Bool -&gt; Bool
+</span><span class="hs-identifier hs-var">and</span></span><span> </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool
+</span><span class="hs-identifier hs-var">not</span></span><span> </span><span class="annot"><span class="annottext">(Bool -&gt; Bool) -&gt; Bool -&gt; Bool
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">CubieEmbed -&gt; CubieEmbed -&gt; Bool
+</span><a href="Cube.html#shareColor"><span class="hs-identifier hs-var">shareColor</span></a></span><span> </span><span class="annot"><span class="annottext">CubieEmbed
+</span><a href="#local-6989586621679036098"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">CubieEmbed
+</span><a href="#local-6989586621679036097"><span class="hs-identifier hs-var">o</span></a></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679036097"><span class="annot"><span class="annottext">CubieEmbed
+</span><a href="#local-6989586621679036097"><span class="hs-identifier hs-var">o</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036099"><span class="hs-identifier hs-var">ol</span></a></span><span> </span><span class="hs-special">]</span><span>
+</span><span id="line-130"></span><span class="annot"><a href="ConstructForest.html#valid"><span class="hs-identifier hs-var">valid</span></a></span><span> </span><span class="annot"><span class="annottext">Layer
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">,</span><span class="annot"><span class="annottext">Set Cubie
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">Set Cubie
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span id="local-6989586621679036096"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036096"><span class="hs-identifier hs-var">n</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036096"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">6</span></span><span>
+</span><span id="line-131"></span><span class="annot"><a href="ConstructForest.html#valid"><span class="hs-identifier hs-var">valid</span></a></span><span> </span><span class="annot"><span class="annottext">Layer
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">LayerSeed
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Bool
+forall a. HasCallStack =&gt; [Char] -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;Invalid layer seed!&quot;</span></span><span>
+</span><span id="line-132"></span><span>
+</span><span id="line-133"></span><span class="annot"><a href="ConstructForest.html#validMini"><span class="hs-identifier hs-type">validMini</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="ConstructForest.html#Layer"><span class="hs-identifier hs-type">Layer</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="ConstructForest.html#LayerSeed"><span class="hs-identifier hs-type">LayerSeed</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-134"></span><span id="validMini"><span class="annot"><span class="annottext">validMini :: Layer -&gt; LayerSeed -&gt; Bool
+</span><a href="ConstructForest.html#validMini"><span class="hs-identifier hs-var hs-var">validMini</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679036093"><span class="annot"><span class="annottext">CubieEmbed
+</span><a href="#local-6989586621679036093"><span class="hs-identifier hs-var">o</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span class="annot"><span class="annottext">Layer
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679036092"><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036092"><span class="hs-identifier hs-var">nl</span></a></span></span><span class="hs-special">,</span><span>  </span><span class="annot"><span class="annottext">Set Cubie
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Set Cubie
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Bool] -&gt; Bool
+forall (t :: * -&gt; *). Foldable t =&gt; t Bool -&gt; Bool
+</span><span class="hs-identifier hs-var">and</span></span><span>   </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool
+</span><span class="hs-identifier hs-var">not</span></span><span> </span><span class="annot"><span class="annottext">(Bool -&gt; Bool) -&gt; Bool -&gt; Bool
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">CubieEmbed -&gt; CubieEmbed -&gt; Bool
+</span><a href="Cube.html#shareColor"><span class="hs-identifier hs-var">shareColor</span></a></span><span> </span><span class="annot"><span class="annottext">CubieEmbed
+</span><a href="#local-6989586621679036093"><span class="hs-identifier hs-var">o</span></a></span><span> </span><span class="annot"><span class="annottext">CubieEmbed
+</span><a href="#local-6989586621679036091"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679036091"><span class="annot"><span class="annottext">CubieEmbed
+</span><a href="#local-6989586621679036091"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036092"><span class="hs-identifier hs-var">nl</span></a></span><span> </span><span class="hs-special">]</span><span>
+</span><span id="line-135"></span><span class="annot"><a href="ConstructForest.html#validMini"><span class="hs-identifier hs-var">validMini</span></a></span><span> </span><span id="local-6989586621679036090"><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036090"><span class="hs-identifier hs-var">ol</span></a></span></span><span>    </span><span class="hs-special">(</span><span id="local-6989586621679036089"><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036089"><span class="hs-identifier hs-var">nl</span></a></span></span><span class="hs-special">,</span><span>  </span><span class="annot"><span class="annottext">Set Cubie
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Set Cubie
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">4</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-136"></span><span>  </span><span class="annot"><span class="annottext">[Bool] -&gt; Bool
+forall (t :: * -&gt; *). Foldable t =&gt; t Bool -&gt; Bool
+</span><span class="hs-identifier hs-var">and</span></span><span> </span><span class="annot"><span class="annottext">([Bool] -&gt; Bool) -&gt; [Bool] -&gt; Bool
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool
+</span><span class="hs-identifier hs-var">not</span></span><span> </span><span class="annot"><span class="annottext">(Bool -&gt; Bool) -&gt; Bool -&gt; Bool
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">CubieEmbed -&gt; CubieEmbed -&gt; Bool
+</span><a href="Cube.html#shareColor"><span class="hs-identifier hs-var">shareColor</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036090"><span class="hs-identifier hs-var">ol</span></a></span><span> </span><span class="annot"><span class="annottext">Layer -&gt; Int -&gt; CubieEmbed
+forall a. [a] -&gt; Int -&gt; a
+</span><span class="hs-operator hs-var">!!</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036088"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036089"><span class="hs-identifier hs-var">nl</span></a></span><span> </span><span class="annot"><span class="annottext">Layer -&gt; Int -&gt; CubieEmbed
+forall a. [a] -&gt; Int -&gt; a
+</span><span class="hs-operator hs-var">!!</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Integral a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">mod</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036088"><span class="hs-identifier hs-var">i</span></a></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">+</span></span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679036088"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036088"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-glyph">..</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">]</span><span> </span><span class="hs-special">]</span><span>
+</span><span id="line-137"></span><span>     </span><span class="annot"><span class="annottext">[Bool] -&gt; [Bool] -&gt; [Bool]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool
+</span><span class="hs-identifier hs-var">not</span></span><span> </span><span class="annot"><span class="annottext">(Bool -&gt; Bool) -&gt; Bool -&gt; Bool
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">CubieEmbed -&gt; CubieEmbed -&gt; Bool
+</span><a href="Cube.html#shareColor"><span class="hs-identifier hs-var">shareColor</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036090"><span class="hs-identifier hs-var">ol</span></a></span><span> </span><span class="annot"><span class="annottext">Layer -&gt; Int -&gt; CubieEmbed
+forall a. [a] -&gt; Int -&gt; a
+</span><span class="hs-operator hs-var">!!</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036086"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036089"><span class="hs-identifier hs-var">nl</span></a></span><span> </span><span class="annot"><span class="annottext">Layer -&gt; Int -&gt; CubieEmbed
+forall a. [a] -&gt; Int -&gt; a
+</span><span class="hs-operator hs-var">!!</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Integral a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-identifier hs-var">mod</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036086"><span class="hs-identifier hs-var">i</span></a></span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679036086"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036086"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-glyph">..</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">]</span><span> </span><span class="hs-special">]</span><span>
+</span><span id="line-138"></span><span class="annot"><a href="ConstructForest.html#validMini"><span class="hs-identifier hs-var">validMini</span></a></span><span> </span><span id="local-6989586621679036085"><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036085"><span class="hs-identifier hs-var">ol</span></a></span></span><span>    </span><span class="hs-special">(</span><span id="local-6989586621679036084"><span class="annot"><span class="annottext">CubieEmbed
+</span><a href="#local-6989586621679036084"><span class="hs-identifier hs-var">n</span></a></span></span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span class="annot"><span class="annottext">Layer
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Set Cubie
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Set Cubie
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">6</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Bool] -&gt; Bool
+forall (t :: * -&gt; *). Foldable t =&gt; t Bool -&gt; Bool
+</span><span class="hs-identifier hs-var">and</span></span><span>   </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool
+</span><span class="hs-identifier hs-var">not</span></span><span> </span><span class="annot"><span class="annottext">(Bool -&gt; Bool) -&gt; Bool -&gt; Bool
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">CubieEmbed -&gt; CubieEmbed -&gt; Bool
+</span><a href="Cube.html#shareColor"><span class="hs-identifier hs-var">shareColor</span></a></span><span> </span><span class="annot"><span class="annottext">CubieEmbed
+</span><a href="#local-6989586621679036083"><span class="hs-identifier hs-var">o</span></a></span><span> </span><span class="annot"><span class="annottext">CubieEmbed
+</span><a href="#local-6989586621679036084"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="hs-glyph">|</span><span> </span><span id="local-6989586621679036083"><span class="annot"><span class="annottext">CubieEmbed
+</span><a href="#local-6989586621679036083"><span class="hs-identifier hs-var">o</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Layer
+</span><a href="#local-6989586621679036085"><span class="hs-identifier hs-var">ol</span></a></span><span> </span><span class="hs-special">]</span><span>
+</span><span id="line-139"></span><span class="annot"><a href="ConstructForest.html#validMini"><span class="hs-identifier hs-var">validMini</span></a></span><span> </span><span class="annot"><span class="annottext">Layer
+</span><span class="hs-identifier">_</span></span><span>     </span><span class="hs-special">(</span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">,</span><span>  </span><span class="annot"><span class="annottext">Set Cubie
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Set Cubie
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679036082"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036082"><span class="hs-identifier hs-var">n</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679036082"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">6</span></span><span>
+</span><span id="line-140"></span><span class="annot"><a href="ConstructForest.html#validMini"><span class="hs-identifier hs-var">validMini</span></a></span><span> </span><span class="annot"><span class="annottext">Layer
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">LayerSeed
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Bool
+forall a. HasCallStack =&gt; [Char] -&gt; a
+</span><span class="hs-identifier hs-var">error</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;Invalid layer seed!&quot;</span></span><span>
+</span><span id="line-141"></span></pre></body></html>
