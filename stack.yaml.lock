@@ -25,6 +25,13 @@ packages:
       size: 744
   original:
     hackage: compact-word-vectors-0.2.0.2
+- completed:
+    hackage: extra-1.7.13@sha256:5f6aa264fd6b30f3f83a3b7f94232255140ff45600fd401305453aba2419a4c4,2697
+    pantry-tree:
+      sha256: 9bfaaccf3813117ddf16f8e578083e9b0a205c9e2ce2de520c455b7d7d3136db
+      size: 1960
+  original:
+    hackage: extra-1.7.13
 snapshots:
 - completed:
     sha256: 1ecad1f0bd2c27de88dbff6572446cfdf647c615d58a7e2e2085c6b7dfc04176
